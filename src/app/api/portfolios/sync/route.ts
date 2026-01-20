@@ -9,16 +9,13 @@ import { ethers } from 'ethers';
 // 模拟代币列表（实际应用中可以从 DEX 获取热门代币列表）
 const MOCK_TOKENS = {
   solana: [
-    { address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', symbol: 'USDC', name: 'USD Coin', decimals: 6 },
     { address: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263', symbol: 'BONK', name: 'Bonk', decimals: 5 },
     { address: '7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr', symbol: 'WIF', name: 'dogwifhat', decimals: 6 },
   ],
   eth: [
-    { address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', symbol: 'USDC', name: 'USD Coin', decimals: 6 },
     { address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', symbol: 'WETH', name: 'Wrapped Ether', decimals: 18 },
   ],
   bsc: [
-    { address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', symbol: 'USDC', name: 'USD Coin', decimals: 18 },
     { address: '0x55d398326f99059fF775485246999027B3197955', symbol: 'USDT', name: 'Tether USD', decimals: 18 },
   ],
 };
@@ -33,9 +30,9 @@ async function getSolanaBalances(address: string): Promise<any[]> {
     // 模拟返回一些持仓
     const mockBalances = [
       {
-        tokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-        amount: '1000',
-        decimals: 6
+        tokenAddress: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
+        amount: '1000000000',
+        decimals: 5
       },
     ];
     
@@ -55,7 +52,7 @@ async function getEvmBalances(address: string, chain: string): Promise<any[]> {
     
     const mockBalances = chain === 'eth' ? [] : [
       {
-        tokenAddress: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d',
+        tokenAddress: '0x55d398326f99059fF775485246999027B3197955',
         amount: '500',
         decimals: 18
       }
@@ -73,16 +70,13 @@ async function getTokenPrice(chain: string, tokenAddress: string): Promise<numbe
   // 在实际应用中，应该调用价格API（如 Jupiter, CoinGecko等）
   const prices: Record<string, Record<string, number>> = {
     solana: {
-      'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': 1.0, // USDC
       'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263': 0.000000015, // BONK
       '7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr': 2.5, // WIF
     },
     eth: {
-      '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48': 1.0, // USDC
       '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2': 3000, // WETH
     },
     bsc: {
-      '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d': 1.0, // USDC
       '0x55d398326f99059fF775485246999027B3197955': 1.0, // USDT
     },
   };

@@ -9,16 +9,13 @@ async function getTokenPrice(chain: string, tokenAddress: string): Promise<numbe
   // 在实际应用中，应该调用价格API（如 Jupiter, CoinGecko, DEX Screener等）
   const prices: Record<string, Record<string, number>> = {
     solana: {
-      'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': 1.0, // USDC
       'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263': 0.000000015, // BONK
       '7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr': 2.5, // WIF
     },
     eth: {
-      '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48': 1.0, // USDC
       '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2': 3000, // WETH
     },
     bsc: {
-      '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d': 1.0, // USDC
       '0x55d398326f99059fF775485246999027B3197955': 1.0, // USDT
     },
   };
