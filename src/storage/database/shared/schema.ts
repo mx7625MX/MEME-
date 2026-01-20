@@ -231,6 +231,12 @@ export const portfolios = pgTable(
     autoSellStatus: varchar("auto_sell_status", { length: 20 }).default("idle"), // idle, triggered, completed
     lastAutoSellAt: timestamp("last_auto_sell_at", { withTimezone: true }), // 最后一次自动卖出时间
     
+    // 定时卖出配置（针对无人买入的情况）
+    timedSellEnabled: boolean("timed_sell_enabled").default(false), // 是否启用定时卖出
+    timedSellSeconds: integer("timed_sell_seconds").default(5), // 定时秒数（1, 5, 10, 30, 60等）
+    timedSellScheduledAt: timestamp("timed_sell_scheduled_at", { withTimezone: true }), // 定时卖出的预定执行时间
+    timedSellExecutedAt: timestamp("timed_sell_executed_at", { withTimezone: true }), // 定时卖出的实际执行时间
+    
     metadata: jsonb("metadata"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -244,6 +250,7 @@ export const portfolios = pgTable(
     tokenIdx: index("portfolios_token_idx").on(table.tokenAddress),
     statusIdx: index("portfolios_status_idx").on(table.status),
     autoSellEnabledIdx: index("portfolios_auto_sell_enabled_idx").on(table.autoSellEnabled),
+    timedSellEnabledIdx: index("portfolios_timed_sell_enabled_idx").on(table.timedSellEnabled),
   })
 );
 
@@ -427,6 +434,10 @@ export const insertPortfolioSchema = createCoercedInsertSchema(portfolios).pick(
   whaleBuyThreshold: true,
   autoSellPercentage: true,
   autoSellStatus: true,
+  timedSellEnabled: true,
+  timedSellSeconds: true,
+  timedSellScheduledAt: true,
+  timedSellExecutedAt: true,
   metadata: true,
 });
 
@@ -445,6 +456,10 @@ export const updatePortfolioSchema = createCoercedInsertSchema(portfolios)
     whaleBuyThreshold: true,
     autoSellPercentage: true,
     autoSellStatus: true,
+    timedSellEnabled: true,
+    timedSellSeconds: true,
+    timedSellScheduledAt: true,
+    timedSellExecutedAt: true,
     metadata: true,
   })
   .partial();

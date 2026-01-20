@@ -52,6 +52,25 @@ export async function PATCH(
       updateData.stopLoss = body.stopLoss;
     }
 
+    // 更新定时卖出配置
+    if ('timedSellEnabled' in body) {
+      updateData.timedSellEnabled = body.timedSellEnabled;
+      // 如果启用定时卖出且未设置预定时间，则设置预定时间
+      if (body.timedSellEnabled && !portfolio.timedSellScheduledAt) {
+        const seconds = body.timedSellSeconds || portfolio.timedSellSeconds || 5;
+        updateData.timedSellSeconds = seconds;
+        updateData.timedSellScheduledAt = new Date(Date.now() + seconds * 1000);
+      }
+    }
+    
+    if ('timedSellSeconds' in body) {
+      updateData.timedSellSeconds = body.timedSellSeconds;
+      // 更新定时卖出的预定时间
+      if (portfolio.timedSellEnabled) {
+        updateData.timedSellScheduledAt = new Date(Date.now() + body.timedSellSeconds * 1000);
+      }
+    }
+
     // 如果重新启用了自动卖出，重置状态为 idle
     if (body.autoSellEnabled === true) {
       updateData.autoSellStatus = 'idle';

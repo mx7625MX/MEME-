@@ -138,11 +138,18 @@ export default function MemeMasterPro() {
     whaleBuyThreshold: '0.5',
     autoSellPercentage: '100',
     profitTarget: '100',
-    stopLoss: '30'
+    stopLoss: '30',
+    timedSellEnabled: false,
+    timedSellSeconds: '5'
   });
   const [isUpdatingAutoSell, setIsUpdatingAutoSell] = useState(false);
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [monitorResults, setMonitorResults] = useState<any>(null);
+  
+  // Jito 配置相关状态
+  const [showJitoConfig, setShowJitoConfig] = useState(false);
+  const [jitoShredKey, setJitoShredKey] = useState('');
+  const [isUpdatingJito, setIsUpdatingJito] = useState(false);
   
   // 转账相关状态
   const [transferForm, setTransferForm] = useState({
@@ -212,7 +219,8 @@ export default function MemeMasterPro() {
         loadStats(),
         loadTransactions(),
         loadAutoTrades(),
-        loadPortfolios()
+        loadPortfolios(),
+        loadJitoConfig()
       ]);
     } catch (error) {
       console.error('Error initializing data:', error);
@@ -674,7 +682,9 @@ export default function MemeMasterPro() {
       whaleBuyThreshold: portfolio.whaleBuyThreshold || '0.5',
       autoSellPercentage: portfolio.autoSellPercentage || '100',
       profitTarget: portfolio.profitTarget || '100',
-      stopLoss: portfolio.stopLoss || '30'
+      stopLoss: portfolio.stopLoss || '30',
+      timedSellEnabled: portfolio.timedSellEnabled || false,
+      timedSellSeconds: portfolio.timedSellSeconds?.toString() || '5'
     });
   };
   
@@ -733,6 +743,66 @@ export default function MemeMasterPro() {
       alert('监控失败');
     } finally {
       setIsMonitoring(false);
+    }
+  };
+  
+  // 加载 Jito 配置
+  const loadJitoConfig = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/settings/jito`);
+      const data = await res.json();
+      if (data.success && data.data.shredKey) {
+        setJitoShredKey(data.data.shredKey);
+      }
+    } catch (error) {
+      console.error('Error loading Jito config:', error);
+    }
+  };
+  
+  // 更新 Jito 配置
+  const handleUpdateJitoConfig = async () => {
+    try {
+      setIsUpdatingJito(true);
+      const res = await fetch(`${API_BASE}/settings/jito`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shredKey: jitoShredKey })
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        alert('Jito Shred Key 配置成功！Solana 交易将使用 Jito 加速');
+        setShowJitoConfig(false);
+      } else {
+        alert(data.error || '配置失败');
+      }
+    } catch (error) {
+      console.error('Error updating Jito config:', error);
+      alert('配置失败');
+    } finally {
+      setIsUpdatingJito(false);
+    }
+  };
+  
+  // 删除 Jito 配置
+  const handleDeleteJitoConfig = async () => {
+    if (!confirm('确定要删除 Jito Shred Key 配置吗？')) return;
+    
+    try {
+      const res = await fetch(`${API_BASE}/settings/jito`, {
+        method: 'DELETE'
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        setJitoShredKey('');
+        alert('Jito 配置已删除');
+      } else {
+        alert(data.error || '删除失败');
+      }
+    } catch (error) {
+      console.error('Error deleting Jito config:', error);
+      alert('删除失败');
     }
   };
   
@@ -2838,7 +2908,68 @@ export default function MemeMasterPro() {
                   <span className="text-sm text-gray-400">
                     自动检查所有启用了闪电卖出的持仓，当达到利润目标或检测到大额买入时自动卖出
                   </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowJitoConfig(!showJitoConfig)}
+                    className="border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10"
+                  >
+                    <Settings className="mr-2 h-4 w-4" />
+                    Jito 配置
+                  </Button>
                 </div>
+                
+                {/* Jito 配置面板 */}
+                {showJitoConfig && (
+                  <div className="mt-4 p-4 bg-black/30 rounded-lg border border-yellow-500/30">
+                    <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-yellow-400" />
+                      Jito Shred Key 配置（Solana 交易加速）
+                    </h4>
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-gray-400 mb-2 block">Jito Shred Key</Label>
+                        <Input
+                          type="text"
+                          placeholder="输入你的 Jito Shred Key"
+                          value={jitoShredKey}
+                          onChange={(e) => setJitoShredKey(e.target.value)}
+                          className="bg-black/50 border-white/10 text-white"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={handleUpdateJitoConfig}
+                          disabled={isUpdatingJito || !jitoShredKey}
+                          className="bg-yellow-600 hover:bg-yellow-700"
+                        >
+                          {isUpdatingJito ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              保存中...
+                            </>
+                          ) : (
+                            '保存配置'
+                          )}
+                        </Button>
+                        {jitoShredKey && (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={handleDeleteJitoConfig}
+                          >
+                            删除配置
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Jito Shred Key 用于加速 Solana 交易，确保闪电卖出的快速执行。配置后，所有 Solana 链的自动卖出交易将使用 Jito Bundle 提交。
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
                 {monitorResults && (
                   <div className="mt-4 p-4 bg-black/30 rounded-lg border border-white/10">
                     <p className="text-white font-medium mb-2">监控结果:</p>
@@ -2980,6 +3111,67 @@ export default function MemeMasterPro() {
                       <p className="text-xs text-gray-500 mt-1">
                         触发自动卖出时，卖出持仓的百分比（100% 表示全部卖出）
                       </p>
+                    </div>
+
+                    {/* 定时卖出配置 */}
+                    <div className="p-4 bg-black/30 rounded-lg border border-orange-500/30">
+                      <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                        <Activity className="h-4 w-4 text-orange-400" />
+                        定时卖出（针对无人买入的情况）
+                      </h4>
+                      <div className="flex items-center gap-3 mb-3">
+                        <input
+                          id="timedSellEnabled"
+                          type="checkbox"
+                          checked={autoSellForm.timedSellEnabled || false}
+                          onChange={(e) => {
+                            const newForm = {...autoSellForm, timedSellEnabled: e.target.checked};
+                            // 如果启用定时卖出，自动设置默认值
+                            if (e.target.checked) {
+                              newForm.timedSellSeconds = '5';
+                            }
+                            setAutoSellForm(newForm);
+                          }}
+                          className="w-5 h-5 rounded"
+                        />
+                        <Label className="text-gray-300 cursor-pointer" htmlFor="timedSellEnabled">
+                          启用定时卖出
+                        </Label>
+                      </div>
+                      
+                      {autoSellForm.timedSellEnabled && (
+                        <div className="space-y-2">
+                          <Label className="text-gray-400 mb-2 block">定时秒数</Label>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              placeholder="5"
+                              min="1"
+                              step="1"
+                              value={autoSellForm.timedSellSeconds || '5'}
+                              onChange={(e) => setAutoSellForm({...autoSellForm, timedSellSeconds: e.target.value})}
+                              className="bg-black/50 border-white/10 text-white w-32"
+                            />
+                            <span className="text-sm text-gray-400">秒</span>
+                          </div>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {['1', '5', '10', '30', '60'].map((sec) => (
+                              <Button
+                                key={sec}
+                                size="sm"
+                                variant={autoSellForm.timedSellSeconds === sec ? 'default' : 'outline'}
+                                onClick={() => setAutoSellForm({...autoSellForm, timedSellSeconds: sec})}
+                                className={autoSellForm.timedSellSeconds === sec ? 'bg-orange-600' : ''}
+                              >
+                                {sec}秒
+                              </Button>
+                            ))}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2">
+                            在发币后，如果在指定时间内无人买入，将自动执行闪电卖出
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     <Button

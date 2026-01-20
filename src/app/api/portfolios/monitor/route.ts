@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from 'coze-coding-dev-sdk';
-import { portfolios, transactions, wallets } from '@/storage/database/shared/schema';
+import { portfolios, transactions, wallets, settings } from '@/storage/database/shared/schema';
 import { insertTransactionSchema } from '@/storage/database/shared/schema';
 import { eq, and } from 'drizzle-orm';
 
@@ -71,7 +71,7 @@ async function checkPortfolio(portfolio: any, db: any): Promise<{ shouldSell: bo
   // 计算当前利润百分比
   const currentProfitPercent = ((currentPrice - buyPrice) / buyPrice) * 100;
 
-  // 检查利润目标触发
+  // 1. 检查利润目标触发
   if (autoSellType === 'profit' || autoSellType === 'both') {
     if (currentProfitPercent >= profitTarget) {
       return {
@@ -91,7 +91,7 @@ async function checkPortfolio(portfolio: any, db: any): Promise<{ shouldSell: bo
     }
   }
 
-  // 检查大额买入触发
+  // 2. 检查大额买入触发
   if (autoSellType === 'whale' || autoSellType === 'both') {
     const whaleDetection = await detectWhaleBuy(portfolio.chain, portfolio.tokenAddress, whaleThreshold);
     
@@ -101,6 +101,21 @@ async function checkPortfolio(portfolio: any, db: any): Promise<{ shouldSell: bo
         reason: `whale_buy_detected`,
         currentPrice,
         whaleAmount: whaleDetection.amount,
+      };
+    }
+  }
+
+  // 3. 检查定时卖出触发（针对无人买入的情况）
+  if (portfolio.timedSellEnabled && portfolio.timedSellScheduledAt) {
+    const scheduledTime = new Date(portfolio.timedSellScheduledAt);
+    const now = new Date();
+    
+    // 如果已超过预定执行时间且尚未执行
+    if (now >= scheduledTime && !portfolio.timedSellExecutedAt) {
+      return {
+        shouldSell: true,
+        reason: `timed_sell_triggered`,
+        currentPrice,
       };
     }
   }
@@ -128,6 +143,36 @@ async function executeFlashSell(portfolio: any, db: any, reason: string, whaleAm
   const profitLoss = (sellPrice - parseFloat(portfolio.buyPrice)) * parseFloat(amountToSell);
   const profitLossPercent = ((sellPrice - parseFloat(portfolio.buyPrice)) / parseFloat(portfolio.buyPrice) * 100);
 
+  // 获取 Jito 配置（用于加速 Solana 交易）
+  let useJito = false;
+  let jitoShredKey = '';
+  
+  if (portfolio.chain === 'solana') {
+    try {
+      const [jitoConfig] = await db.select().from(settings).where(eq(settings.key, 'jito_shred_key'));
+      if (jitoConfig && jitoConfig.value) {
+        useJito = true;
+        jitoShredKey = jitoConfig.value;
+      }
+    } catch (error) {
+      console.error('Error fetching Jito config:', error);
+    }
+  }
+
+  // 模拟交易提交（实际应用中应该调用 Jito SDK 或 DEX API）
+  let txHash = `0x${Array.from({ length: 64 }, () => 
+    Math.floor(Math.random() * 16).toString(16)
+  ).join('')}`;
+  
+  if (useJito && portfolio.chain === 'solana') {
+    // 如果配置了 Jito，模拟使用 Jito 提交交易
+    // 在实际应用中，应该使用 Jito SDK:
+    // const jitoBundle = await createJitoBundle(transaction, jitoShredKey);
+    // const bundleId = await submitJitoBundle(jitoBundle);
+    // txHash = bundleId;
+    txHash = `jito_${txHash}`; // 标记为 Jito 交易
+  }
+
   // 创建交易记录
   const newTransaction = {
     walletId: portfolio.walletId,
@@ -149,10 +194,10 @@ async function executeFlashSell(portfolio: any, db: any, reason: string, whaleAm
       profitLossPercent: profitLossPercent.toFixed(2),
       buyPrice: portfolio.buyPrice,
       executeTime: new Date().toISOString(),
-      txHash: `0x${Array.from({ length: 64 }, () => 
-        Math.floor(Math.random() * 16).toString(16)
-      ).join('')}`,
+      txHash,
       dex: portfolio.chain === 'solana' ? 'Raydium' : portfolio.chain === 'bsc' ? 'PancakeSwap' : 'Uniswap',
+      useJito,
+      jitoShredKey: useJito ? jitoShredKey.substring(0, 8) + '...' : undefined, // 只保存前 8 个字符用于验证
       portfolioId: portfolio.id
     }
   };
@@ -171,6 +216,7 @@ async function executeFlashSell(portfolio: any, db: any, reason: string, whaleAm
       .set({ 
         status: 'sold',
         autoSellStatus: 'completed',
+        timedSellExecutedAt: new Date(),
         soldAt: new Date(),
         lastAutoSellAt: new Date(),
         updatedAt: new Date()
@@ -186,6 +232,7 @@ async function executeFlashSell(portfolio: any, db: any, reason: string, whaleAm
         profitLoss: profitLoss.toString(),
         profitLossPercent: profitLossPercent.toFixed(2),
         autoSellStatus: 'completed',
+        timedSellExecutedAt: new Date(),
         lastAutoSellAt: new Date(),
         updatedAt: new Date()
       })

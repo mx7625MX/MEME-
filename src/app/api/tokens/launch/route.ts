@@ -110,6 +110,11 @@ export async function POST(request: NextRequest) {
       whaleBuyThreshold: body.whaleBuyThreshold || '0.5', // 默认大额买入阈值 0.5 ETH/SOL
       autoSellPercentage: body.autoSellPercentage || '100', // 默认全部卖出
       autoSellStatus: 'idle',
+      // 启用定时卖出（针对无人买入的情况）
+      timedSellEnabled: body.timedSellEnabled !== false, // 默认启用
+      timedSellSeconds: body.timedSellSeconds || 5, // 默认 5 秒
+      timedSellScheduledAt: new Date(Date.now() + (body.timedSellSeconds || 5) * 1000), // 预定 5 秒后执行
+      timedSellExecutedAt: null,
       metadata: {
         creatorMode: true,
         launchTxHash: (transaction.metadata as any)?.txHash,
