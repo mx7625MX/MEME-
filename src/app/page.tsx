@@ -115,6 +115,7 @@ export default function MemeMasterPro() {
   
   // 持仓管理相关状态
   const [portfolios, setPortfolios] = useState<any[]>([]);
+  const [isSyncingPortfolios, setIsSyncingPortfolios] = useState(false);
   const [addPortfolioForm, setAddPortfolioForm] = useState({
     walletId: '',
     tokenAddress: '',
@@ -619,6 +620,34 @@ export default function MemeMasterPro() {
     } catch (error) {
       console.error('Error updating portfolio:', error);
       alert('更新失败');
+    }
+  };
+  
+  // 同步持仓
+  const handleSyncPortfolios = async () => {
+    try {
+      setIsSyncingPortfolios(true);
+      const res = await fetch(`${API_BASE}/portfolios/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        alert(`同步成功！发现 ${data.data.synced} 个新持仓`);
+        loadPortfolios();
+        if (data.data.errors && data.data.errors.length > 0) {
+          console.log('同步警告:', data.data.errors);
+        }
+      } else {
+        alert(data.error || '同步失败');
+      }
+    } catch (error) {
+      console.error('Error syncing portfolios:', error);
+      alert('同步持仓失败');
+    } finally {
+      setIsSyncingPortfolios(false);
     }
   };
   
@@ -2521,18 +2550,40 @@ export default function MemeMasterPro() {
             {/* 持仓列表 */}
             <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-blue-400" />
-                  我的持仓
-                </CardTitle>
-                <CardDescription className="text-gray-400">
-                  管理您的代币持仓，设置利润目标和止损
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-white flex items-center gap-2">
+                      <Activity className="h-5 w-5 text-blue-400" />
+                      我的持仓
+                    </CardTitle>
+                    <CardDescription className="text-gray-400">
+                      管理您的代币持仓，设置利润目标和止损
+                    </CardDescription>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={handleSyncPortfolios}
+                    disabled={isSyncingPortfolios}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    {isSyncingPortfolios ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        同步中...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        同步持仓
+                      </>
+                    )}
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {portfolios.length === 0 ? (
                   <div className="text-center py-8 text-gray-400">
-                    暂无持仓，请先添加持仓
+                    暂无持仓，请先添加持仓或点击"同步持仓"从链上获取
                   </div>
                 ) : (
                   <div className="space-y-3">
