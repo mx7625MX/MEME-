@@ -141,6 +141,11 @@ export default function MemeMasterPro() {
   const [showInfluencers, setShowInfluencers] = useState(true);
   const [followedInfluencers, setFollowedInfluencers] = useState<Set<string>>(new Set());
 
+  // 大V内容获取相关状态
+  const [fetchingInfluencer, setFetchingInfluencer] = useState<string | null>(null);
+  const [influencerAnalysis, setInfluencerAnalysis] = useState<any>(null);
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+
   // 初始化数据
   useEffect(() => {
     initializeData();
@@ -534,6 +539,56 @@ export default function MemeMasterPro() {
     setShowInfluencers(false);
   };
 
+  // 获取大V最新内容并分析
+  const handleFetchInfluencerContent = async (influencer: Influencer) => {
+    try {
+      setFetchingInfluencer(influencer.id);
+
+      const res = await fetch(`${API_BASE}/influencers/${influencer.id}/fetch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'ai', // 使用AI模拟模式
+          count: 5,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setInfluencerAnalysis(data.data);
+        setShowAnalysisModal(true);
+      } else {
+        alert(data.error || '获取内容失败');
+      }
+    } catch (error) {
+      console.error('Error fetching influencer content:', error);
+      alert('获取大V内容失败');
+    } finally {
+      setFetchingInfluencer(null);
+    }
+  };
+
+  // 使用分析结果一键发币
+  const handleLaunchFromInfluencerAnalysis = (suggestion: any) => {
+    if (!launchForm.walletId) {
+      alert('请先在发币系统页面选择钱包');
+      setShowAnalysisModal(false);
+      setActiveTab('launch');
+      return;
+    }
+
+    setLaunchForm({
+      ...launchForm,
+      tokenName: suggestion.name,
+      tokenSymbol: suggestion.symbol,
+      totalSupply: suggestion.totalSupply,
+      liquidity: suggestion.liquidity,
+    });
+
+    setShowAnalysisModal(false);
+    setActiveTab('launch');
+  };
+
   // SSE 实时数据流
   useEffect(() => {
     const eventSource = new EventSource(`${API_BASE}/market/stream`);
@@ -717,6 +772,182 @@ export default function MemeMasterPro() {
             </Card>
           </TabsContent>
 
+          {/* 大V分析结果弹窗 */}
+          {showAnalysisModal && influencerAnalysis && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.9)" }}>
+              <Card className="bg-black/90 border-white/20 backdrop-blur-sm max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                <CardHeader className="border-b border-white/10">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Brain className="h-5 w-5 text-purple-400" />
+                        {influencerAnalysis.influencer.name} 最新内容分析
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        {influencerAnalysis.influencer.handle} • {influencerAnalysis.message}
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-gray-400 hover:text-white"
+                      onClick={() => setShowAnalysisModal(false)}
+                    >
+                      <Send className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4 overflow-y-auto p-6">
+                  {/* 整体分析摘要 */}
+                  <div className="space-y-3 p-4 bg-black/50 rounded-lg border border-white/10">
+                    <h3 className="text-white font-semibold flex items-center gap-2">
+                      <Activity className="h-5 w-5 text-blue-400" />
+                      整体分析摘要
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-400">内容数量</p>
+                        <p className="text-2xl font-bold text-white">{influencerAnalysis.summary.totalContents}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">看涨</p>
+                        <p className="text-2xl font-bold text-green-400">{influencerAnalysis.summary.bullishCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">看跌</p>
+                        <p className="text-2xl font-bold text-red-400">{influencerAnalysis.summary.bearishCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">平均情绪</p>
+                        <p className={`text-2xl font-bold ${parseFloat(influencerAnalysis.summary.avgScore) > 0 ? 'text-green-400' : parseFloat(influencerAnalysis.summary.avgScore) < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                          {influencerAnalysis.summary.avgScore}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 整体建议 */}
+                    <div className="mt-4 p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg border border-purple-500/30">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-400 mb-1">AI 建议</p>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              className={
+                                influencerAnalysis.summary.recommendation === 'BUY'
+                                  ? 'bg-green-600 text-lg py-1 px-3'
+                                  : influencerAnalysis.summary.recommendation === 'SELL'
+                                  ? 'bg-red-600 text-lg py-1 px-3'
+                                  : 'bg-yellow-600 text-lg py-1 px-3'
+                              }
+                            >
+                              {influencerAnalysis.summary.recommendation === 'BUY' ? '建议买入' :
+                               influencerAnalysis.summary.recommendation === 'SELL' ? '建议卖出' : '建议持有'}
+                            </Badge>
+                            <span className="text-sm text-gray-400">
+                              {influencerAnalysis.summary.recommendation === 'BUY' ? '基于大V内容，市场情绪偏看涨' :
+                               influencerAnalysis.summary.recommendation === 'SELL' ? '基于大V内容，市场情绪偏看跌' :
+                               '基于大V内容，市场情绪中性'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 热门关键词 */}
+                    <div>
+                      <p className="text-sm text-gray-400 mb-2">热门关键词</p>
+                      <div className="flex flex-wrap gap-2">
+                        {influencerAnalysis.summary.topKeywords.map((keyword: any, idx: number) => (
+                          <Badge key={idx} variant="outline" className="border-purple-500/50 text-purple-400">
+                            {keyword.word} ({keyword.freq})
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 详细内容列表 */}
+                  <div className="space-y-3">
+                    <h3 className="text-white font-semibold flex items-center gap-2">
+                      <Send className="h-5 w-5 text-blue-400" />
+                      内容详情与分析
+                    </h3>
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {influencerAnalysis.contents.map((content: any, idx: number) => {
+                        const analysis = influencerAnalysis.analyses[idx];
+                        return (
+                          <div key={idx} className="p-4 bg-black/50 rounded-lg border border-white/10">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <p className="text-white text-sm flex-1">{content.content}</p>
+                              {content.isSimulated && (
+                                <Badge variant="secondary" className="text-xs">AI生成</Badge>
+                              )}
+                            </div>
+                            {analysis && (
+                              <div className="flex items-center gap-4 pt-2 border-t border-white/10">
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    analysis.analysis.sentiment.sentiment === 'bullish'
+                                      ? 'border-green-500/50 text-green-400'
+                                      : analysis.analysis.sentiment.sentiment === 'bearish'
+                                      ? 'border-red-500/50 text-red-400'
+                                      : 'border-gray-500/50 text-gray-400'
+                                  }
+                                >
+                                  {analysis.analysis.sentiment.sentiment === 'bullish' ? '看涨' :
+                                   analysis.analysis.sentiment.sentiment === 'bearish' ? '看跌' : '中性'}
+                                </Badge>
+                                <span className="text-xs text-gray-500">
+                                  情绪: {analysis.analysis.sentiment.score.toFixed(2)} | 关键词: {analysis.analysis.keywords.length}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 代币建议 */}
+                  {influencerAnalysis.summary.tokenSuggestions && influencerAnalysis.summary.tokenSuggestions.length > 0 && (
+                    <div className="space-y-3 p-4 bg-black/50 rounded-lg border border-white/10">
+                      <h3 className="text-white font-semibold flex items-center gap-2">
+                        <Rocket className="h-5 w-5 text-purple-400" />
+                        代币建议
+                      </h3>
+                      <div className="space-y-3">
+                        {influencerAnalysis.summary.tokenSuggestions.map((suggestion: any, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between rounded-lg bg-black/30 p-4 border border-white/10 hover:border-purple-500/50 transition-colors">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-white font-medium">{suggestion.name}</span>
+                                <Badge variant="secondary">{suggestion.symbol}</Badge>
+                                <Badge className="bg-purple-600">{suggestion.relevance}% 相关度</Badge>
+                              </div>
+                              <p className="text-sm text-gray-400">
+                                供应量: {suggestion.totalSupply} | 价格: ${suggestion.price} | 流动性: {suggestion.liquidity}
+                              </p>
+                              <p className="text-xs text-gray-500">{suggestion.description}</p>
+                            </div>
+                            <Button
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={() => handleLaunchFromInfluencerAnalysis(suggestion)}
+                            >
+                              <Rocket className="mr-2 h-4 w-4" />
+                              一键发币
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {/* 钱包管理 */}
           <TabsContent value="wallets" className="space-y-4">
             <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
@@ -803,6 +1034,182 @@ export default function MemeMasterPro() {
             </Card>
           </TabsContent>
 
+          {/* 大V分析结果弹窗 */}
+          {showAnalysisModal && influencerAnalysis && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.9)" }}>
+              <Card className="bg-black/90 border-white/20 backdrop-blur-sm max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                <CardHeader className="border-b border-white/10">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Brain className="h-5 w-5 text-purple-400" />
+                        {influencerAnalysis.influencer.name} 最新内容分析
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        {influencerAnalysis.influencer.handle} • {influencerAnalysis.message}
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-gray-400 hover:text-white"
+                      onClick={() => setShowAnalysisModal(false)}
+                    >
+                      <Send className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4 overflow-y-auto p-6">
+                  {/* 整体分析摘要 */}
+                  <div className="space-y-3 p-4 bg-black/50 rounded-lg border border-white/10">
+                    <h3 className="text-white font-semibold flex items-center gap-2">
+                      <Activity className="h-5 w-5 text-blue-400" />
+                      整体分析摘要
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-400">内容数量</p>
+                        <p className="text-2xl font-bold text-white">{influencerAnalysis.summary.totalContents}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">看涨</p>
+                        <p className="text-2xl font-bold text-green-400">{influencerAnalysis.summary.bullishCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">看跌</p>
+                        <p className="text-2xl font-bold text-red-400">{influencerAnalysis.summary.bearishCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">平均情绪</p>
+                        <p className={`text-2xl font-bold ${parseFloat(influencerAnalysis.summary.avgScore) > 0 ? 'text-green-400' : parseFloat(influencerAnalysis.summary.avgScore) < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                          {influencerAnalysis.summary.avgScore}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 整体建议 */}
+                    <div className="mt-4 p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg border border-purple-500/30">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-400 mb-1">AI 建议</p>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              className={
+                                influencerAnalysis.summary.recommendation === 'BUY'
+                                  ? 'bg-green-600 text-lg py-1 px-3'
+                                  : influencerAnalysis.summary.recommendation === 'SELL'
+                                  ? 'bg-red-600 text-lg py-1 px-3'
+                                  : 'bg-yellow-600 text-lg py-1 px-3'
+                              }
+                            >
+                              {influencerAnalysis.summary.recommendation === 'BUY' ? '建议买入' :
+                               influencerAnalysis.summary.recommendation === 'SELL' ? '建议卖出' : '建议持有'}
+                            </Badge>
+                            <span className="text-sm text-gray-400">
+                              {influencerAnalysis.summary.recommendation === 'BUY' ? '基于大V内容，市场情绪偏看涨' :
+                               influencerAnalysis.summary.recommendation === 'SELL' ? '基于大V内容，市场情绪偏看跌' :
+                               '基于大V内容，市场情绪中性'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 热门关键词 */}
+                    <div>
+                      <p className="text-sm text-gray-400 mb-2">热门关键词</p>
+                      <div className="flex flex-wrap gap-2">
+                        {influencerAnalysis.summary.topKeywords.map((keyword: any, idx: number) => (
+                          <Badge key={idx} variant="outline" className="border-purple-500/50 text-purple-400">
+                            {keyword.word} ({keyword.freq})
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 详细内容列表 */}
+                  <div className="space-y-3">
+                    <h3 className="text-white font-semibold flex items-center gap-2">
+                      <Send className="h-5 w-5 text-blue-400" />
+                      内容详情与分析
+                    </h3>
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {influencerAnalysis.contents.map((content: any, idx: number) => {
+                        const analysis = influencerAnalysis.analyses[idx];
+                        return (
+                          <div key={idx} className="p-4 bg-black/50 rounded-lg border border-white/10">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <p className="text-white text-sm flex-1">{content.content}</p>
+                              {content.isSimulated && (
+                                <Badge variant="secondary" className="text-xs">AI生成</Badge>
+                              )}
+                            </div>
+                            {analysis && (
+                              <div className="flex items-center gap-4 pt-2 border-t border-white/10">
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    analysis.analysis.sentiment.sentiment === 'bullish'
+                                      ? 'border-green-500/50 text-green-400'
+                                      : analysis.analysis.sentiment.sentiment === 'bearish'
+                                      ? 'border-red-500/50 text-red-400'
+                                      : 'border-gray-500/50 text-gray-400'
+                                  }
+                                >
+                                  {analysis.analysis.sentiment.sentiment === 'bullish' ? '看涨' :
+                                   analysis.analysis.sentiment.sentiment === 'bearish' ? '看跌' : '中性'}
+                                </Badge>
+                                <span className="text-xs text-gray-500">
+                                  情绪: {analysis.analysis.sentiment.score.toFixed(2)} | 关键词: {analysis.analysis.keywords.length}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 代币建议 */}
+                  {influencerAnalysis.summary.tokenSuggestions && influencerAnalysis.summary.tokenSuggestions.length > 0 && (
+                    <div className="space-y-3 p-4 bg-black/50 rounded-lg border border-white/10">
+                      <h3 className="text-white font-semibold flex items-center gap-2">
+                        <Rocket className="h-5 w-5 text-purple-400" />
+                        代币建议
+                      </h3>
+                      <div className="space-y-3">
+                        {influencerAnalysis.summary.tokenSuggestions.map((suggestion: any, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between rounded-lg bg-black/30 p-4 border border-white/10 hover:border-purple-500/50 transition-colors">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-white font-medium">{suggestion.name}</span>
+                                <Badge variant="secondary">{suggestion.symbol}</Badge>
+                                <Badge className="bg-purple-600">{suggestion.relevance}% 相关度</Badge>
+                              </div>
+                              <p className="text-sm text-gray-400">
+                                供应量: {suggestion.totalSupply} | 价格: ${suggestion.price} | 流动性: {suggestion.liquidity}
+                              </p>
+                              <p className="text-xs text-gray-500">{suggestion.description}</p>
+                            </div>
+                            <Button
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={() => handleLaunchFromInfluencerAnalysis(suggestion)}
+                            >
+                              <Rocket className="mr-2 h-4 w-4" />
+                              一键发币
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {/* 市场监控 */}
           <TabsContent value="market" className="space-y-4">
             <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
@@ -850,6 +1257,182 @@ export default function MemeMasterPro() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* 大V分析结果弹窗 */}
+          {showAnalysisModal && influencerAnalysis && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.9)" }}>
+              <Card className="bg-black/90 border-white/20 backdrop-blur-sm max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                <CardHeader className="border-b border-white/10">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Brain className="h-5 w-5 text-purple-400" />
+                        {influencerAnalysis.influencer.name} 最新内容分析
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        {influencerAnalysis.influencer.handle} • {influencerAnalysis.message}
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-gray-400 hover:text-white"
+                      onClick={() => setShowAnalysisModal(false)}
+                    >
+                      <Send className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4 overflow-y-auto p-6">
+                  {/* 整体分析摘要 */}
+                  <div className="space-y-3 p-4 bg-black/50 rounded-lg border border-white/10">
+                    <h3 className="text-white font-semibold flex items-center gap-2">
+                      <Activity className="h-5 w-5 text-blue-400" />
+                      整体分析摘要
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-400">内容数量</p>
+                        <p className="text-2xl font-bold text-white">{influencerAnalysis.summary.totalContents}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">看涨</p>
+                        <p className="text-2xl font-bold text-green-400">{influencerAnalysis.summary.bullishCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">看跌</p>
+                        <p className="text-2xl font-bold text-red-400">{influencerAnalysis.summary.bearishCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">平均情绪</p>
+                        <p className={`text-2xl font-bold ${parseFloat(influencerAnalysis.summary.avgScore) > 0 ? 'text-green-400' : parseFloat(influencerAnalysis.summary.avgScore) < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                          {influencerAnalysis.summary.avgScore}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 整体建议 */}
+                    <div className="mt-4 p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg border border-purple-500/30">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-400 mb-1">AI 建议</p>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              className={
+                                influencerAnalysis.summary.recommendation === 'BUY'
+                                  ? 'bg-green-600 text-lg py-1 px-3'
+                                  : influencerAnalysis.summary.recommendation === 'SELL'
+                                  ? 'bg-red-600 text-lg py-1 px-3'
+                                  : 'bg-yellow-600 text-lg py-1 px-3'
+                              }
+                            >
+                              {influencerAnalysis.summary.recommendation === 'BUY' ? '建议买入' :
+                               influencerAnalysis.summary.recommendation === 'SELL' ? '建议卖出' : '建议持有'}
+                            </Badge>
+                            <span className="text-sm text-gray-400">
+                              {influencerAnalysis.summary.recommendation === 'BUY' ? '基于大V内容，市场情绪偏看涨' :
+                               influencerAnalysis.summary.recommendation === 'SELL' ? '基于大V内容，市场情绪偏看跌' :
+                               '基于大V内容，市场情绪中性'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 热门关键词 */}
+                    <div>
+                      <p className="text-sm text-gray-400 mb-2">热门关键词</p>
+                      <div className="flex flex-wrap gap-2">
+                        {influencerAnalysis.summary.topKeywords.map((keyword: any, idx: number) => (
+                          <Badge key={idx} variant="outline" className="border-purple-500/50 text-purple-400">
+                            {keyword.word} ({keyword.freq})
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 详细内容列表 */}
+                  <div className="space-y-3">
+                    <h3 className="text-white font-semibold flex items-center gap-2">
+                      <Send className="h-5 w-5 text-blue-400" />
+                      内容详情与分析
+                    </h3>
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {influencerAnalysis.contents.map((content: any, idx: number) => {
+                        const analysis = influencerAnalysis.analyses[idx];
+                        return (
+                          <div key={idx} className="p-4 bg-black/50 rounded-lg border border-white/10">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <p className="text-white text-sm flex-1">{content.content}</p>
+                              {content.isSimulated && (
+                                <Badge variant="secondary" className="text-xs">AI生成</Badge>
+                              )}
+                            </div>
+                            {analysis && (
+                              <div className="flex items-center gap-4 pt-2 border-t border-white/10">
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    analysis.analysis.sentiment.sentiment === 'bullish'
+                                      ? 'border-green-500/50 text-green-400'
+                                      : analysis.analysis.sentiment.sentiment === 'bearish'
+                                      ? 'border-red-500/50 text-red-400'
+                                      : 'border-gray-500/50 text-gray-400'
+                                  }
+                                >
+                                  {analysis.analysis.sentiment.sentiment === 'bullish' ? '看涨' :
+                                   analysis.analysis.sentiment.sentiment === 'bearish' ? '看跌' : '中性'}
+                                </Badge>
+                                <span className="text-xs text-gray-500">
+                                  情绪: {analysis.analysis.sentiment.score.toFixed(2)} | 关键词: {analysis.analysis.keywords.length}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 代币建议 */}
+                  {influencerAnalysis.summary.tokenSuggestions && influencerAnalysis.summary.tokenSuggestions.length > 0 && (
+                    <div className="space-y-3 p-4 bg-black/50 rounded-lg border border-white/10">
+                      <h3 className="text-white font-semibold flex items-center gap-2">
+                        <Rocket className="h-5 w-5 text-purple-400" />
+                        代币建议
+                      </h3>
+                      <div className="space-y-3">
+                        {influencerAnalysis.summary.tokenSuggestions.map((suggestion: any, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between rounded-lg bg-black/30 p-4 border border-white/10 hover:border-purple-500/50 transition-colors">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-white font-medium">{suggestion.name}</span>
+                                <Badge variant="secondary">{suggestion.symbol}</Badge>
+                                <Badge className="bg-purple-600">{suggestion.relevance}% 相关度</Badge>
+                              </div>
+                              <p className="text-sm text-gray-400">
+                                供应量: {suggestion.totalSupply} | 价格: ${suggestion.price} | 流动性: {suggestion.liquidity}
+                              </p>
+                              <p className="text-xs text-gray-500">{suggestion.description}</p>
+                            </div>
+                            <Button
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={() => handleLaunchFromInfluencerAnalysis(suggestion)}
+                            >
+                              <Rocket className="mr-2 h-4 w-4" />
+                              一键发币
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* 智能发现 */}
           <TabsContent value="discover" className="space-y-4">
@@ -977,6 +1560,20 @@ export default function MemeMasterPro() {
                                 title="使用此大V内容分析"
                               >
                                 <Send className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-gray-400 hover:text-green-400"
+                                onClick={() => handleFetchInfluencerContent(influencer)}
+                                title="获取最新内容并AI分析"
+                                disabled={fetchingInfluencer === influencer.id}
+                              >
+                                {fetchingInfluencer === influencer.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Brain className="h-4 w-4" />
+                                )}
                               </Button>
                               <Button
                                 variant={followedInfluencers.has(influencer.id) ? 'secondary' : 'outline'}
@@ -1157,6 +1754,182 @@ export default function MemeMasterPro() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* 大V分析结果弹窗 */}
+          {showAnalysisModal && influencerAnalysis && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.9)" }}>
+              <Card className="bg-black/90 border-white/20 backdrop-blur-sm max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                <CardHeader className="border-b border-white/10">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Brain className="h-5 w-5 text-purple-400" />
+                        {influencerAnalysis.influencer.name} 最新内容分析
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        {influencerAnalysis.influencer.handle} • {influencerAnalysis.message}
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-gray-400 hover:text-white"
+                      onClick={() => setShowAnalysisModal(false)}
+                    >
+                      <Send className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4 overflow-y-auto p-6">
+                  {/* 整体分析摘要 */}
+                  <div className="space-y-3 p-4 bg-black/50 rounded-lg border border-white/10">
+                    <h3 className="text-white font-semibold flex items-center gap-2">
+                      <Activity className="h-5 w-5 text-blue-400" />
+                      整体分析摘要
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-400">内容数量</p>
+                        <p className="text-2xl font-bold text-white">{influencerAnalysis.summary.totalContents}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">看涨</p>
+                        <p className="text-2xl font-bold text-green-400">{influencerAnalysis.summary.bullishCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">看跌</p>
+                        <p className="text-2xl font-bold text-red-400">{influencerAnalysis.summary.bearishCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">平均情绪</p>
+                        <p className={`text-2xl font-bold ${parseFloat(influencerAnalysis.summary.avgScore) > 0 ? 'text-green-400' : parseFloat(influencerAnalysis.summary.avgScore) < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                          {influencerAnalysis.summary.avgScore}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 整体建议 */}
+                    <div className="mt-4 p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg border border-purple-500/30">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-400 mb-1">AI 建议</p>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              className={
+                                influencerAnalysis.summary.recommendation === 'BUY'
+                                  ? 'bg-green-600 text-lg py-1 px-3'
+                                  : influencerAnalysis.summary.recommendation === 'SELL'
+                                  ? 'bg-red-600 text-lg py-1 px-3'
+                                  : 'bg-yellow-600 text-lg py-1 px-3'
+                              }
+                            >
+                              {influencerAnalysis.summary.recommendation === 'BUY' ? '建议买入' :
+                               influencerAnalysis.summary.recommendation === 'SELL' ? '建议卖出' : '建议持有'}
+                            </Badge>
+                            <span className="text-sm text-gray-400">
+                              {influencerAnalysis.summary.recommendation === 'BUY' ? '基于大V内容，市场情绪偏看涨' :
+                               influencerAnalysis.summary.recommendation === 'SELL' ? '基于大V内容，市场情绪偏看跌' :
+                               '基于大V内容，市场情绪中性'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 热门关键词 */}
+                    <div>
+                      <p className="text-sm text-gray-400 mb-2">热门关键词</p>
+                      <div className="flex flex-wrap gap-2">
+                        {influencerAnalysis.summary.topKeywords.map((keyword: any, idx: number) => (
+                          <Badge key={idx} variant="outline" className="border-purple-500/50 text-purple-400">
+                            {keyword.word} ({keyword.freq})
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 详细内容列表 */}
+                  <div className="space-y-3">
+                    <h3 className="text-white font-semibold flex items-center gap-2">
+                      <Send className="h-5 w-5 text-blue-400" />
+                      内容详情与分析
+                    </h3>
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {influencerAnalysis.contents.map((content: any, idx: number) => {
+                        const analysis = influencerAnalysis.analyses[idx];
+                        return (
+                          <div key={idx} className="p-4 bg-black/50 rounded-lg border border-white/10">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <p className="text-white text-sm flex-1">{content.content}</p>
+                              {content.isSimulated && (
+                                <Badge variant="secondary" className="text-xs">AI生成</Badge>
+                              )}
+                            </div>
+                            {analysis && (
+                              <div className="flex items-center gap-4 pt-2 border-t border-white/10">
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    analysis.analysis.sentiment.sentiment === 'bullish'
+                                      ? 'border-green-500/50 text-green-400'
+                                      : analysis.analysis.sentiment.sentiment === 'bearish'
+                                      ? 'border-red-500/50 text-red-400'
+                                      : 'border-gray-500/50 text-gray-400'
+                                  }
+                                >
+                                  {analysis.analysis.sentiment.sentiment === 'bullish' ? '看涨' :
+                                   analysis.analysis.sentiment.sentiment === 'bearish' ? '看跌' : '中性'}
+                                </Badge>
+                                <span className="text-xs text-gray-500">
+                                  情绪: {analysis.analysis.sentiment.score.toFixed(2)} | 关键词: {analysis.analysis.keywords.length}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 代币建议 */}
+                  {influencerAnalysis.summary.tokenSuggestions && influencerAnalysis.summary.tokenSuggestions.length > 0 && (
+                    <div className="space-y-3 p-4 bg-black/50 rounded-lg border border-white/10">
+                      <h3 className="text-white font-semibold flex items-center gap-2">
+                        <Rocket className="h-5 w-5 text-purple-400" />
+                        代币建议
+                      </h3>
+                      <div className="space-y-3">
+                        {influencerAnalysis.summary.tokenSuggestions.map((suggestion: any, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between rounded-lg bg-black/30 p-4 border border-white/10 hover:border-purple-500/50 transition-colors">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-white font-medium">{suggestion.name}</span>
+                                <Badge variant="secondary">{suggestion.symbol}</Badge>
+                                <Badge className="bg-purple-600">{suggestion.relevance}% 相关度</Badge>
+                              </div>
+                              <p className="text-sm text-gray-400">
+                                供应量: {suggestion.totalSupply} | 价格: ${suggestion.price} | 流动性: {suggestion.liquidity}
+                              </p>
+                              <p className="text-xs text-gray-500">{suggestion.description}</p>
+                            </div>
+                            <Button
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={() => handleLaunchFromInfluencerAnalysis(suggestion)}
+                            >
+                              <Rocket className="mr-2 h-4 w-4" />
+                              一键发币
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
           
           {/* 发币系统 */}
           <TabsContent value="launch" className="space-y-4">
@@ -1253,6 +2026,182 @@ export default function MemeMasterPro() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* 大V分析结果弹窗 */}
+          {showAnalysisModal && influencerAnalysis && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.9)" }}>
+              <Card className="bg-black/90 border-white/20 backdrop-blur-sm max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                <CardHeader className="border-b border-white/10">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Brain className="h-5 w-5 text-purple-400" />
+                        {influencerAnalysis.influencer.name} 最新内容分析
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        {influencerAnalysis.influencer.handle} • {influencerAnalysis.message}
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-gray-400 hover:text-white"
+                      onClick={() => setShowAnalysisModal(false)}
+                    >
+                      <Send className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4 overflow-y-auto p-6">
+                  {/* 整体分析摘要 */}
+                  <div className="space-y-3 p-4 bg-black/50 rounded-lg border border-white/10">
+                    <h3 className="text-white font-semibold flex items-center gap-2">
+                      <Activity className="h-5 w-5 text-blue-400" />
+                      整体分析摘要
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-400">内容数量</p>
+                        <p className="text-2xl font-bold text-white">{influencerAnalysis.summary.totalContents}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">看涨</p>
+                        <p className="text-2xl font-bold text-green-400">{influencerAnalysis.summary.bullishCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">看跌</p>
+                        <p className="text-2xl font-bold text-red-400">{influencerAnalysis.summary.bearishCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">平均情绪</p>
+                        <p className={`text-2xl font-bold ${parseFloat(influencerAnalysis.summary.avgScore) > 0 ? 'text-green-400' : parseFloat(influencerAnalysis.summary.avgScore) < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                          {influencerAnalysis.summary.avgScore}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 整体建议 */}
+                    <div className="mt-4 p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg border border-purple-500/30">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-400 mb-1">AI 建议</p>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              className={
+                                influencerAnalysis.summary.recommendation === 'BUY'
+                                  ? 'bg-green-600 text-lg py-1 px-3'
+                                  : influencerAnalysis.summary.recommendation === 'SELL'
+                                  ? 'bg-red-600 text-lg py-1 px-3'
+                                  : 'bg-yellow-600 text-lg py-1 px-3'
+                              }
+                            >
+                              {influencerAnalysis.summary.recommendation === 'BUY' ? '建议买入' :
+                               influencerAnalysis.summary.recommendation === 'SELL' ? '建议卖出' : '建议持有'}
+                            </Badge>
+                            <span className="text-sm text-gray-400">
+                              {influencerAnalysis.summary.recommendation === 'BUY' ? '基于大V内容，市场情绪偏看涨' :
+                               influencerAnalysis.summary.recommendation === 'SELL' ? '基于大V内容，市场情绪偏看跌' :
+                               '基于大V内容，市场情绪中性'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 热门关键词 */}
+                    <div>
+                      <p className="text-sm text-gray-400 mb-2">热门关键词</p>
+                      <div className="flex flex-wrap gap-2">
+                        {influencerAnalysis.summary.topKeywords.map((keyword: any, idx: number) => (
+                          <Badge key={idx} variant="outline" className="border-purple-500/50 text-purple-400">
+                            {keyword.word} ({keyword.freq})
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 详细内容列表 */}
+                  <div className="space-y-3">
+                    <h3 className="text-white font-semibold flex items-center gap-2">
+                      <Send className="h-5 w-5 text-blue-400" />
+                      内容详情与分析
+                    </h3>
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {influencerAnalysis.contents.map((content: any, idx: number) => {
+                        const analysis = influencerAnalysis.analyses[idx];
+                        return (
+                          <div key={idx} className="p-4 bg-black/50 rounded-lg border border-white/10">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <p className="text-white text-sm flex-1">{content.content}</p>
+                              {content.isSimulated && (
+                                <Badge variant="secondary" className="text-xs">AI生成</Badge>
+                              )}
+                            </div>
+                            {analysis && (
+                              <div className="flex items-center gap-4 pt-2 border-t border-white/10">
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    analysis.analysis.sentiment.sentiment === 'bullish'
+                                      ? 'border-green-500/50 text-green-400'
+                                      : analysis.analysis.sentiment.sentiment === 'bearish'
+                                      ? 'border-red-500/50 text-red-400'
+                                      : 'border-gray-500/50 text-gray-400'
+                                  }
+                                >
+                                  {analysis.analysis.sentiment.sentiment === 'bullish' ? '看涨' :
+                                   analysis.analysis.sentiment.sentiment === 'bearish' ? '看跌' : '中性'}
+                                </Badge>
+                                <span className="text-xs text-gray-500">
+                                  情绪: {analysis.analysis.sentiment.score.toFixed(2)} | 关键词: {analysis.analysis.keywords.length}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 代币建议 */}
+                  {influencerAnalysis.summary.tokenSuggestions && influencerAnalysis.summary.tokenSuggestions.length > 0 && (
+                    <div className="space-y-3 p-4 bg-black/50 rounded-lg border border-white/10">
+                      <h3 className="text-white font-semibold flex items-center gap-2">
+                        <Rocket className="h-5 w-5 text-purple-400" />
+                        代币建议
+                      </h3>
+                      <div className="space-y-3">
+                        {influencerAnalysis.summary.tokenSuggestions.map((suggestion: any, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between rounded-lg bg-black/30 p-4 border border-white/10 hover:border-purple-500/50 transition-colors">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-white font-medium">{suggestion.name}</span>
+                                <Badge variant="secondary">{suggestion.symbol}</Badge>
+                                <Badge className="bg-purple-600">{suggestion.relevance}% 相关度</Badge>
+                              </div>
+                              <p className="text-sm text-gray-400">
+                                供应量: {suggestion.totalSupply} | 价格: ${suggestion.price} | 流动性: {suggestion.liquidity}
+                              </p>
+                              <p className="text-xs text-gray-500">{suggestion.description}</p>
+                            </div>
+                            <Button
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={() => handleLaunchFromInfluencerAnalysis(suggestion)}
+                            >
+                              <Rocket className="mr-2 h-4 w-4" />
+                              一键发币
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
           
           {/* 闪电卖出 */}
           <TabsContent value="trading" className="space-y-4">
@@ -1348,6 +2297,182 @@ export default function MemeMasterPro() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* 大V分析结果弹窗 */}
+          {showAnalysisModal && influencerAnalysis && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.9)" }}>
+              <Card className="bg-black/90 border-white/20 backdrop-blur-sm max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                <CardHeader className="border-b border-white/10">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Brain className="h-5 w-5 text-purple-400" />
+                        {influencerAnalysis.influencer.name} 最新内容分析
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        {influencerAnalysis.influencer.handle} • {influencerAnalysis.message}
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-gray-400 hover:text-white"
+                      onClick={() => setShowAnalysisModal(false)}
+                    >
+                      <Send className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4 overflow-y-auto p-6">
+                  {/* 整体分析摘要 */}
+                  <div className="space-y-3 p-4 bg-black/50 rounded-lg border border-white/10">
+                    <h3 className="text-white font-semibold flex items-center gap-2">
+                      <Activity className="h-5 w-5 text-blue-400" />
+                      整体分析摘要
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-400">内容数量</p>
+                        <p className="text-2xl font-bold text-white">{influencerAnalysis.summary.totalContents}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">看涨</p>
+                        <p className="text-2xl font-bold text-green-400">{influencerAnalysis.summary.bullishCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">看跌</p>
+                        <p className="text-2xl font-bold text-red-400">{influencerAnalysis.summary.bearishCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">平均情绪</p>
+                        <p className={`text-2xl font-bold ${parseFloat(influencerAnalysis.summary.avgScore) > 0 ? 'text-green-400' : parseFloat(influencerAnalysis.summary.avgScore) < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                          {influencerAnalysis.summary.avgScore}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 整体建议 */}
+                    <div className="mt-4 p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg border border-purple-500/30">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-400 mb-1">AI 建议</p>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              className={
+                                influencerAnalysis.summary.recommendation === 'BUY'
+                                  ? 'bg-green-600 text-lg py-1 px-3'
+                                  : influencerAnalysis.summary.recommendation === 'SELL'
+                                  ? 'bg-red-600 text-lg py-1 px-3'
+                                  : 'bg-yellow-600 text-lg py-1 px-3'
+                              }
+                            >
+                              {influencerAnalysis.summary.recommendation === 'BUY' ? '建议买入' :
+                               influencerAnalysis.summary.recommendation === 'SELL' ? '建议卖出' : '建议持有'}
+                            </Badge>
+                            <span className="text-sm text-gray-400">
+                              {influencerAnalysis.summary.recommendation === 'BUY' ? '基于大V内容，市场情绪偏看涨' :
+                               influencerAnalysis.summary.recommendation === 'SELL' ? '基于大V内容，市场情绪偏看跌' :
+                               '基于大V内容，市场情绪中性'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 热门关键词 */}
+                    <div>
+                      <p className="text-sm text-gray-400 mb-2">热门关键词</p>
+                      <div className="flex flex-wrap gap-2">
+                        {influencerAnalysis.summary.topKeywords.map((keyword: any, idx: number) => (
+                          <Badge key={idx} variant="outline" className="border-purple-500/50 text-purple-400">
+                            {keyword.word} ({keyword.freq})
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 详细内容列表 */}
+                  <div className="space-y-3">
+                    <h3 className="text-white font-semibold flex items-center gap-2">
+                      <Send className="h-5 w-5 text-blue-400" />
+                      内容详情与分析
+                    </h3>
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {influencerAnalysis.contents.map((content: any, idx: number) => {
+                        const analysis = influencerAnalysis.analyses[idx];
+                        return (
+                          <div key={idx} className="p-4 bg-black/50 rounded-lg border border-white/10">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <p className="text-white text-sm flex-1">{content.content}</p>
+                              {content.isSimulated && (
+                                <Badge variant="secondary" className="text-xs">AI生成</Badge>
+                              )}
+                            </div>
+                            {analysis && (
+                              <div className="flex items-center gap-4 pt-2 border-t border-white/10">
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    analysis.analysis.sentiment.sentiment === 'bullish'
+                                      ? 'border-green-500/50 text-green-400'
+                                      : analysis.analysis.sentiment.sentiment === 'bearish'
+                                      ? 'border-red-500/50 text-red-400'
+                                      : 'border-gray-500/50 text-gray-400'
+                                  }
+                                >
+                                  {analysis.analysis.sentiment.sentiment === 'bullish' ? '看涨' :
+                                   analysis.analysis.sentiment.sentiment === 'bearish' ? '看跌' : '中性'}
+                                </Badge>
+                                <span className="text-xs text-gray-500">
+                                  情绪: {analysis.analysis.sentiment.score.toFixed(2)} | 关键词: {analysis.analysis.keywords.length}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 代币建议 */}
+                  {influencerAnalysis.summary.tokenSuggestions && influencerAnalysis.summary.tokenSuggestions.length > 0 && (
+                    <div className="space-y-3 p-4 bg-black/50 rounded-lg border border-white/10">
+                      <h3 className="text-white font-semibold flex items-center gap-2">
+                        <Rocket className="h-5 w-5 text-purple-400" />
+                        代币建议
+                      </h3>
+                      <div className="space-y-3">
+                        {influencerAnalysis.summary.tokenSuggestions.map((suggestion: any, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between rounded-lg bg-black/30 p-4 border border-white/10 hover:border-purple-500/50 transition-colors">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-white font-medium">{suggestion.name}</span>
+                                <Badge variant="secondary">{suggestion.symbol}</Badge>
+                                <Badge className="bg-purple-600">{suggestion.relevance}% 相关度</Badge>
+                              </div>
+                              <p className="text-sm text-gray-400">
+                                供应量: {suggestion.totalSupply} | 价格: ${suggestion.price} | 流动性: {suggestion.liquidity}
+                              </p>
+                              <p className="text-xs text-gray-500">{suggestion.description}</p>
+                            </div>
+                            <Button
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={() => handleLaunchFromInfluencerAnalysis(suggestion)}
+                            >
+                              <Rocket className="mr-2 h-4 w-4" />
+                              一键发币
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
           
           {/* 转账 */}
           <TabsContent value="transfer" className="space-y-4">
@@ -1425,6 +2550,182 @@ export default function MemeMasterPro() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* 大V分析结果弹窗 */}
+          {showAnalysisModal && influencerAnalysis && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.9)" }}>
+              <Card className="bg-black/90 border-white/20 backdrop-blur-sm max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                <CardHeader className="border-b border-white/10">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Brain className="h-5 w-5 text-purple-400" />
+                        {influencerAnalysis.influencer.name} 最新内容分析
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        {influencerAnalysis.influencer.handle} • {influencerAnalysis.message}
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-gray-400 hover:text-white"
+                      onClick={() => setShowAnalysisModal(false)}
+                    >
+                      <Send className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4 overflow-y-auto p-6">
+                  {/* 整体分析摘要 */}
+                  <div className="space-y-3 p-4 bg-black/50 rounded-lg border border-white/10">
+                    <h3 className="text-white font-semibold flex items-center gap-2">
+                      <Activity className="h-5 w-5 text-blue-400" />
+                      整体分析摘要
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-400">内容数量</p>
+                        <p className="text-2xl font-bold text-white">{influencerAnalysis.summary.totalContents}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">看涨</p>
+                        <p className="text-2xl font-bold text-green-400">{influencerAnalysis.summary.bullishCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">看跌</p>
+                        <p className="text-2xl font-bold text-red-400">{influencerAnalysis.summary.bearishCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">平均情绪</p>
+                        <p className={`text-2xl font-bold ${parseFloat(influencerAnalysis.summary.avgScore) > 0 ? 'text-green-400' : parseFloat(influencerAnalysis.summary.avgScore) < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                          {influencerAnalysis.summary.avgScore}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 整体建议 */}
+                    <div className="mt-4 p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg border border-purple-500/30">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-400 mb-1">AI 建议</p>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              className={
+                                influencerAnalysis.summary.recommendation === 'BUY'
+                                  ? 'bg-green-600 text-lg py-1 px-3'
+                                  : influencerAnalysis.summary.recommendation === 'SELL'
+                                  ? 'bg-red-600 text-lg py-1 px-3'
+                                  : 'bg-yellow-600 text-lg py-1 px-3'
+                              }
+                            >
+                              {influencerAnalysis.summary.recommendation === 'BUY' ? '建议买入' :
+                               influencerAnalysis.summary.recommendation === 'SELL' ? '建议卖出' : '建议持有'}
+                            </Badge>
+                            <span className="text-sm text-gray-400">
+                              {influencerAnalysis.summary.recommendation === 'BUY' ? '基于大V内容，市场情绪偏看涨' :
+                               influencerAnalysis.summary.recommendation === 'SELL' ? '基于大V内容，市场情绪偏看跌' :
+                               '基于大V内容，市场情绪中性'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 热门关键词 */}
+                    <div>
+                      <p className="text-sm text-gray-400 mb-2">热门关键词</p>
+                      <div className="flex flex-wrap gap-2">
+                        {influencerAnalysis.summary.topKeywords.map((keyword: any, idx: number) => (
+                          <Badge key={idx} variant="outline" className="border-purple-500/50 text-purple-400">
+                            {keyword.word} ({keyword.freq})
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 详细内容列表 */}
+                  <div className="space-y-3">
+                    <h3 className="text-white font-semibold flex items-center gap-2">
+                      <Send className="h-5 w-5 text-blue-400" />
+                      内容详情与分析
+                    </h3>
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {influencerAnalysis.contents.map((content: any, idx: number) => {
+                        const analysis = influencerAnalysis.analyses[idx];
+                        return (
+                          <div key={idx} className="p-4 bg-black/50 rounded-lg border border-white/10">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <p className="text-white text-sm flex-1">{content.content}</p>
+                              {content.isSimulated && (
+                                <Badge variant="secondary" className="text-xs">AI生成</Badge>
+                              )}
+                            </div>
+                            {analysis && (
+                              <div className="flex items-center gap-4 pt-2 border-t border-white/10">
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    analysis.analysis.sentiment.sentiment === 'bullish'
+                                      ? 'border-green-500/50 text-green-400'
+                                      : analysis.analysis.sentiment.sentiment === 'bearish'
+                                      ? 'border-red-500/50 text-red-400'
+                                      : 'border-gray-500/50 text-gray-400'
+                                  }
+                                >
+                                  {analysis.analysis.sentiment.sentiment === 'bullish' ? '看涨' :
+                                   analysis.analysis.sentiment.sentiment === 'bearish' ? '看跌' : '中性'}
+                                </Badge>
+                                <span className="text-xs text-gray-500">
+                                  情绪: {analysis.analysis.sentiment.score.toFixed(2)} | 关键词: {analysis.analysis.keywords.length}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 代币建议 */}
+                  {influencerAnalysis.summary.tokenSuggestions && influencerAnalysis.summary.tokenSuggestions.length > 0 && (
+                    <div className="space-y-3 p-4 bg-black/50 rounded-lg border border-white/10">
+                      <h3 className="text-white font-semibold flex items-center gap-2">
+                        <Rocket className="h-5 w-5 text-purple-400" />
+                        代币建议
+                      </h3>
+                      <div className="space-y-3">
+                        {influencerAnalysis.summary.tokenSuggestions.map((suggestion: any, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between rounded-lg bg-black/30 p-4 border border-white/10 hover:border-purple-500/50 transition-colors">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-white font-medium">{suggestion.name}</span>
+                                <Badge variant="secondary">{suggestion.symbol}</Badge>
+                                <Badge className="bg-purple-600">{suggestion.relevance}% 相关度</Badge>
+                              </div>
+                              <p className="text-sm text-gray-400">
+                                供应量: {suggestion.totalSupply} | 价格: ${suggestion.price} | 流动性: {suggestion.liquidity}
+                              </p>
+                              <p className="text-xs text-gray-500">{suggestion.description}</p>
+                            </div>
+                            <Button
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={() => handleLaunchFromInfluencerAnalysis(suggestion)}
+                            >
+                              <Rocket className="mr-2 h-4 w-4" />
+                              一键发币
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
           
           {/* 交易历史 */}
           <TabsContent value="history" className="space-y-4">
@@ -1479,6 +2780,182 @@ export default function MemeMasterPro() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* 大V分析结果弹窗 */}
+          {showAnalysisModal && influencerAnalysis && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.9)" }}>
+              <Card className="bg-black/90 border-white/20 backdrop-blur-sm max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                <CardHeader className="border-b border-white/10">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Brain className="h-5 w-5 text-purple-400" />
+                        {influencerAnalysis.influencer.name} 最新内容分析
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        {influencerAnalysis.influencer.handle} • {influencerAnalysis.message}
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-gray-400 hover:text-white"
+                      onClick={() => setShowAnalysisModal(false)}
+                    >
+                      <Send className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4 overflow-y-auto p-6">
+                  {/* 整体分析摘要 */}
+                  <div className="space-y-3 p-4 bg-black/50 rounded-lg border border-white/10">
+                    <h3 className="text-white font-semibold flex items-center gap-2">
+                      <Activity className="h-5 w-5 text-blue-400" />
+                      整体分析摘要
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-400">内容数量</p>
+                        <p className="text-2xl font-bold text-white">{influencerAnalysis.summary.totalContents}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">看涨</p>
+                        <p className="text-2xl font-bold text-green-400">{influencerAnalysis.summary.bullishCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">看跌</p>
+                        <p className="text-2xl font-bold text-red-400">{influencerAnalysis.summary.bearishCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">平均情绪</p>
+                        <p className={`text-2xl font-bold ${parseFloat(influencerAnalysis.summary.avgScore) > 0 ? 'text-green-400' : parseFloat(influencerAnalysis.summary.avgScore) < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                          {influencerAnalysis.summary.avgScore}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 整体建议 */}
+                    <div className="mt-4 p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg border border-purple-500/30">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-400 mb-1">AI 建议</p>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              className={
+                                influencerAnalysis.summary.recommendation === 'BUY'
+                                  ? 'bg-green-600 text-lg py-1 px-3'
+                                  : influencerAnalysis.summary.recommendation === 'SELL'
+                                  ? 'bg-red-600 text-lg py-1 px-3'
+                                  : 'bg-yellow-600 text-lg py-1 px-3'
+                              }
+                            >
+                              {influencerAnalysis.summary.recommendation === 'BUY' ? '建议买入' :
+                               influencerAnalysis.summary.recommendation === 'SELL' ? '建议卖出' : '建议持有'}
+                            </Badge>
+                            <span className="text-sm text-gray-400">
+                              {influencerAnalysis.summary.recommendation === 'BUY' ? '基于大V内容，市场情绪偏看涨' :
+                               influencerAnalysis.summary.recommendation === 'SELL' ? '基于大V内容，市场情绪偏看跌' :
+                               '基于大V内容，市场情绪中性'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 热门关键词 */}
+                    <div>
+                      <p className="text-sm text-gray-400 mb-2">热门关键词</p>
+                      <div className="flex flex-wrap gap-2">
+                        {influencerAnalysis.summary.topKeywords.map((keyword: any, idx: number) => (
+                          <Badge key={idx} variant="outline" className="border-purple-500/50 text-purple-400">
+                            {keyword.word} ({keyword.freq})
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 详细内容列表 */}
+                  <div className="space-y-3">
+                    <h3 className="text-white font-semibold flex items-center gap-2">
+                      <Send className="h-5 w-5 text-blue-400" />
+                      内容详情与分析
+                    </h3>
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {influencerAnalysis.contents.map((content: any, idx: number) => {
+                        const analysis = influencerAnalysis.analyses[idx];
+                        return (
+                          <div key={idx} className="p-4 bg-black/50 rounded-lg border border-white/10">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <p className="text-white text-sm flex-1">{content.content}</p>
+                              {content.isSimulated && (
+                                <Badge variant="secondary" className="text-xs">AI生成</Badge>
+                              )}
+                            </div>
+                            {analysis && (
+                              <div className="flex items-center gap-4 pt-2 border-t border-white/10">
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    analysis.analysis.sentiment.sentiment === 'bullish'
+                                      ? 'border-green-500/50 text-green-400'
+                                      : analysis.analysis.sentiment.sentiment === 'bearish'
+                                      ? 'border-red-500/50 text-red-400'
+                                      : 'border-gray-500/50 text-gray-400'
+                                  }
+                                >
+                                  {analysis.analysis.sentiment.sentiment === 'bullish' ? '看涨' :
+                                   analysis.analysis.sentiment.sentiment === 'bearish' ? '看跌' : '中性'}
+                                </Badge>
+                                <span className="text-xs text-gray-500">
+                                  情绪: {analysis.analysis.sentiment.score.toFixed(2)} | 关键词: {analysis.analysis.keywords.length}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 代币建议 */}
+                  {influencerAnalysis.summary.tokenSuggestions && influencerAnalysis.summary.tokenSuggestions.length > 0 && (
+                    <div className="space-y-3 p-4 bg-black/50 rounded-lg border border-white/10">
+                      <h3 className="text-white font-semibold flex items-center gap-2">
+                        <Rocket className="h-5 w-5 text-purple-400" />
+                        代币建议
+                      </h3>
+                      <div className="space-y-3">
+                        {influencerAnalysis.summary.tokenSuggestions.map((suggestion: any, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between rounded-lg bg-black/30 p-4 border border-white/10 hover:border-purple-500/50 transition-colors">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-white font-medium">{suggestion.name}</span>
+                                <Badge variant="secondary">{suggestion.symbol}</Badge>
+                                <Badge className="bg-purple-600">{suggestion.relevance}% 相关度</Badge>
+                              </div>
+                              <p className="text-sm text-gray-400">
+                                供应量: {suggestion.totalSupply} | 价格: ${suggestion.price} | 流动性: {suggestion.liquidity}
+                              </p>
+                              <p className="text-xs text-gray-500">{suggestion.description}</p>
+                            </div>
+                            <Button
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={() => handleLaunchFromInfluencerAnalysis(suggestion)}
+                            >
+                              <Rocket className="mr-2 h-4 w-4" />
+                              一键发币
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
           
           {/* 自动交易 */}
           <TabsContent value="autotrade" className="space-y-4">
@@ -1628,6 +3105,182 @@ export default function MemeMasterPro() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* 大V分析结果弹窗 */}
+          {showAnalysisModal && influencerAnalysis && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.9)" }}>
+              <Card className="bg-black/90 border-white/20 backdrop-blur-sm max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                <CardHeader className="border-b border-white/10">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Brain className="h-5 w-5 text-purple-400" />
+                        {influencerAnalysis.influencer.name} 最新内容分析
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        {influencerAnalysis.influencer.handle} • {influencerAnalysis.message}
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-gray-400 hover:text-white"
+                      onClick={() => setShowAnalysisModal(false)}
+                    >
+                      <Send className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4 overflow-y-auto p-6">
+                  {/* 整体分析摘要 */}
+                  <div className="space-y-3 p-4 bg-black/50 rounded-lg border border-white/10">
+                    <h3 className="text-white font-semibold flex items-center gap-2">
+                      <Activity className="h-5 w-5 text-blue-400" />
+                      整体分析摘要
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-400">内容数量</p>
+                        <p className="text-2xl font-bold text-white">{influencerAnalysis.summary.totalContents}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">看涨</p>
+                        <p className="text-2xl font-bold text-green-400">{influencerAnalysis.summary.bullishCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">看跌</p>
+                        <p className="text-2xl font-bold text-red-400">{influencerAnalysis.summary.bearishCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">平均情绪</p>
+                        <p className={`text-2xl font-bold ${parseFloat(influencerAnalysis.summary.avgScore) > 0 ? 'text-green-400' : parseFloat(influencerAnalysis.summary.avgScore) < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                          {influencerAnalysis.summary.avgScore}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 整体建议 */}
+                    <div className="mt-4 p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg border border-purple-500/30">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-400 mb-1">AI 建议</p>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              className={
+                                influencerAnalysis.summary.recommendation === 'BUY'
+                                  ? 'bg-green-600 text-lg py-1 px-3'
+                                  : influencerAnalysis.summary.recommendation === 'SELL'
+                                  ? 'bg-red-600 text-lg py-1 px-3'
+                                  : 'bg-yellow-600 text-lg py-1 px-3'
+                              }
+                            >
+                              {influencerAnalysis.summary.recommendation === 'BUY' ? '建议买入' :
+                               influencerAnalysis.summary.recommendation === 'SELL' ? '建议卖出' : '建议持有'}
+                            </Badge>
+                            <span className="text-sm text-gray-400">
+                              {influencerAnalysis.summary.recommendation === 'BUY' ? '基于大V内容，市场情绪偏看涨' :
+                               influencerAnalysis.summary.recommendation === 'SELL' ? '基于大V内容，市场情绪偏看跌' :
+                               '基于大V内容，市场情绪中性'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 热门关键词 */}
+                    <div>
+                      <p className="text-sm text-gray-400 mb-2">热门关键词</p>
+                      <div className="flex flex-wrap gap-2">
+                        {influencerAnalysis.summary.topKeywords.map((keyword: any, idx: number) => (
+                          <Badge key={idx} variant="outline" className="border-purple-500/50 text-purple-400">
+                            {keyword.word} ({keyword.freq})
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 详细内容列表 */}
+                  <div className="space-y-3">
+                    <h3 className="text-white font-semibold flex items-center gap-2">
+                      <Send className="h-5 w-5 text-blue-400" />
+                      内容详情与分析
+                    </h3>
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {influencerAnalysis.contents.map((content: any, idx: number) => {
+                        const analysis = influencerAnalysis.analyses[idx];
+                        return (
+                          <div key={idx} className="p-4 bg-black/50 rounded-lg border border-white/10">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <p className="text-white text-sm flex-1">{content.content}</p>
+                              {content.isSimulated && (
+                                <Badge variant="secondary" className="text-xs">AI生成</Badge>
+                              )}
+                            </div>
+                            {analysis && (
+                              <div className="flex items-center gap-4 pt-2 border-t border-white/10">
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    analysis.analysis.sentiment.sentiment === 'bullish'
+                                      ? 'border-green-500/50 text-green-400'
+                                      : analysis.analysis.sentiment.sentiment === 'bearish'
+                                      ? 'border-red-500/50 text-red-400'
+                                      : 'border-gray-500/50 text-gray-400'
+                                  }
+                                >
+                                  {analysis.analysis.sentiment.sentiment === 'bullish' ? '看涨' :
+                                   analysis.analysis.sentiment.sentiment === 'bearish' ? '看跌' : '中性'}
+                                </Badge>
+                                <span className="text-xs text-gray-500">
+                                  情绪: {analysis.analysis.sentiment.score.toFixed(2)} | 关键词: {analysis.analysis.keywords.length}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 代币建议 */}
+                  {influencerAnalysis.summary.tokenSuggestions && influencerAnalysis.summary.tokenSuggestions.length > 0 && (
+                    <div className="space-y-3 p-4 bg-black/50 rounded-lg border border-white/10">
+                      <h3 className="text-white font-semibold flex items-center gap-2">
+                        <Rocket className="h-5 w-5 text-purple-400" />
+                        代币建议
+                      </h3>
+                      <div className="space-y-3">
+                        {influencerAnalysis.summary.tokenSuggestions.map((suggestion: any, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between rounded-lg bg-black/30 p-4 border border-white/10 hover:border-purple-500/50 transition-colors">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-white font-medium">{suggestion.name}</span>
+                                <Badge variant="secondary">{suggestion.symbol}</Badge>
+                                <Badge className="bg-purple-600">{suggestion.relevance}% 相关度</Badge>
+                              </div>
+                              <p className="text-sm text-gray-400">
+                                供应量: {suggestion.totalSupply} | 价格: ${suggestion.price} | 流动性: {suggestion.liquidity}
+                              </p>
+                              <p className="text-xs text-gray-500">{suggestion.description}</p>
+                            </div>
+                            <Button
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={() => handleLaunchFromInfluencerAnalysis(suggestion)}
+                            >
+                              <Rocket className="mr-2 h-4 w-4" />
+                              一键发币
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </Tabs>
       </main>
     </div>
