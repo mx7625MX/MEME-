@@ -7,14 +7,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Wallet, 
-  Zap, 
-  TrendingUp, 
-  Shield, 
-  Brain, 
-  AlertTriangle, 
-  History, 
+import {
+  Wallet,
+  Zap,
+  TrendingUp,
+  Shield,
+  Brain,
+  AlertTriangle,
+  History,
   Settings,
   Activity,
   Rocket,
@@ -23,8 +23,16 @@ import {
   BarChart3,
   Loader2,
   RefreshCw,
-  Send
+  Send,
+  Users,
+  Star,
+  CheckCircle,
+  Search,
+  Filter,
+  Copy
 } from 'lucide-react';
+
+import { INFLUENCERS, Influencer, INFLUENCERS_BY_CATEGORY, searchInfluencers } from '@/config/influencers';
 
 // API 基础路径
 const API_BASE = '/api';
@@ -126,6 +134,12 @@ export default function MemeMasterPro() {
     slippage: '5'
   });
   const [isCreatingAutoTrade, setIsCreatingAutoTrade] = useState(false);
+
+  // 大V相关状态
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [influencerSearch, setInfluencerSearch] = useState('');
+  const [showInfluencers, setShowInfluencers] = useState(true);
+  const [followedInfluencers, setFollowedInfluencers] = useState<Set<string>>(new Set());
 
   // 初始化数据
   useEffect(() => {
@@ -470,12 +484,12 @@ export default function MemeMasterPro() {
   // 删除自动交易配置
   const deleteAutoTrade = async (id: string) => {
     if (!confirm('确定要删除这个自动交易配置吗？')) return;
-    
+
     try {
       const res = await fetch(`${API_BASE}/auto-trades/${id}`, {
         method: 'DELETE'
       });
-      
+
       const data = await res.json();
       if (data.success) {
         loadAutoTrades();
@@ -483,6 +497,41 @@ export default function MemeMasterPro() {
     } catch (error) {
       console.error('Error deleting auto trade:', error);
     }
+  };
+
+  // 大V相关函数
+  const toggleFollowInfluencer = (influencerId: string) => {
+    setFollowedInfluencers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(influencerId)) {
+        newSet.delete(influencerId);
+      } else {
+        newSet.add(influencerId);
+      }
+      return newSet;
+    });
+  };
+
+  const getFilteredInfluencers = (): Influencer[] => {
+    let list = INFLUENCERS_BY_CATEGORY[selectedCategory as keyof typeof INFLUENCERS_BY_CATEGORY] || INFLUENCERS;
+
+    if (influencerSearch) {
+      list = searchInfluencers(influencerSearch);
+    }
+
+    return list;
+  };
+
+  const handleCopyInfluencerHandle = (handle: string) => {
+    navigator.clipboard.writeText(handle);
+    alert('已复制账号');
+  };
+
+  const handleUseInfluencerContent = (influencer: Influencer) => {
+    // 生成示例内容供用户参考
+    const exampleContent = `来自 ${influencer.handle} (${influencer.name})\n\n[在此处粘贴${influencer.name}的最新推文内容...]\n\n建议关注关键词: ${influencer.keywords?.slice(0, 3).join(', ') || '加密货币, Meme, 热点'}`;
+    setDiscoverContent(exampleContent);
+    setShowInfluencers(false);
   };
 
   // SSE 实时数据流
@@ -808,10 +857,171 @@ export default function MemeMasterPro() {
               <CardHeader>
                 <CardTitle className="text-white">智能发现</CardTitle>
                 <CardDescription className="text-gray-400">
-                  分析社交媒体内容，提取热点关键词，一键发币
+                  关注大V，分析社交媒体内容，提取热点关键词，一键发币
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* 大V关注建议 */}
+                <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-white font-semibold flex items-center gap-2">
+                      <Users className="h-5 w-5 text-purple-400" />
+                      推荐关注大V
+                      <Badge className="bg-purple-600">{INFLUENCERS.length} 位</Badge>
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-gray-400 hover:text-white"
+                        onClick={() => setShowInfluencers(!showInfluencers)}
+                      >
+                        {showInfluencers ? '隐藏' : '显示'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {showInfluencers && (
+                    <div className="space-y-3">
+                      {/* 类别筛选和搜索 */}
+                      <div className="flex gap-2 flex-wrap">
+                        <div className="flex gap-1">
+                          {Object.keys(INFLUENCERS_BY_CATEGORY).map((category) => (
+                            <Button
+                              key={category}
+                              variant={selectedCategory === category ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setSelectedCategory(category)}
+                              className={
+                                selectedCategory === category
+                                  ? 'bg-purple-600 hover:bg-purple-700'
+                                  : 'border-white/20 text-gray-300'
+                              }
+                            >
+                              {category === 'all' ? '全部' :
+                               category === 'crypto' ? '加密' :
+                               category === 'tech' ? '科技' :
+                               category === 'defi' ? 'DeFi' :
+                               category === 'meme' ? 'Meme' :
+                               category === 'founder' ? '创始人' : category}
+                            </Button>
+                          ))}
+                        </div>
+                        <div className="flex-1 min-w-48">
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+                            <Input
+                              className="bg-black/50 border-white/10 text-white pl-9"
+                              placeholder="搜索大V名称或关键词..."
+                              value={influencerSearch}
+                              onChange={(e) => setInfluencerSearch(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 大V列表 */}
+                      <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+                        {getFilteredInfluencers().map((influencer) => (
+                          <div
+                            key={influencer.id}
+                            className="flex items-center justify-between p-3 bg-black/50 rounded-lg border border-white/10 hover:border-purple-500/50 transition-colors"
+                          >
+                            <div className="flex items-center gap-3 flex-1">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white font-bold text-lg">
+                                {influencer.name[0]}
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-white font-medium">{influencer.name}</span>
+                                  {influencer.verified && (
+                                    <CheckCircle className="h-4 w-4 text-blue-400" />
+                                  )}
+                                  <Badge variant="outline" className="border-purple-500/50 text-purple-400 text-xs">
+                                    {influencer.platform === 'twitter' ? 'Twitter' :
+                                     influencer.platform === 'telegram' ? 'Telegram' :
+                                     influencer.platform === 'weibo' ? '微博' : '其他'}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-sm text-purple-400">{influencer.handle}</span>
+                                  <span className="text-xs text-gray-500">{influencer.followers ? `• ${influencer.followers} 粉丝` : ''}</span>
+                                </div>
+                                <p className="text-xs text-gray-400 mt-1 line-clamp-1">{influencer.description}</p>
+                                {influencer.keywords && influencer.keywords.length > 0 && (
+                                  <div className="flex gap-1 mt-1 flex-wrap">
+                                    {influencer.keywords.slice(0, 3).map((keyword, idx) => (
+                                      <Badge key={idx} variant="secondary" className="text-xs">
+                                        {keyword}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-gray-400 hover:text-purple-400"
+                                onClick={() => handleCopyInfluencerHandle(influencer.handle)}
+                                title="复制账号"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-gray-400 hover:text-blue-400"
+                                onClick={() => handleUseInfluencerContent(influencer)}
+                                title="使用此大V内容分析"
+                              >
+                                <Send className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant={followedInfluencers.has(influencer.id) ? 'secondary' : 'outline'}
+                                size="sm"
+                                onClick={() => toggleFollowInfluencer(influencer.id)}
+                                className={
+                                  followedInfluencers.has(influencer.id)
+                                    ? 'bg-green-600 hover:bg-green-700'
+                                    : 'border-white/20 text-gray-300'
+                                }
+                              >
+                                {followedInfluencers.has(influencer.id) ? (
+                                  <>
+                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                    已关注
+                                  </>
+                                ) : (
+                                  <>
+                                    <Star className="h-4 w-4 mr-1" />
+                                    关注
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                        {getFilteredInfluencers().length === 0 && (
+                          <div className="text-center py-8 text-gray-500">
+                            <Search className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                            <p>未找到匹配的大V</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {followedInfluencers.size > 0 && (
+                        <div className="pt-2 border-t border-white/10">
+                          <p className="text-sm text-gray-400">
+                            已关注 <span className="text-purple-400 font-semibold">{followedInfluencers.size}</span> 位大V
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
                   <div className="flex gap-2">
                     <select
@@ -830,7 +1040,7 @@ export default function MemeMasterPro() {
                       value={discoverContent}
                       onChange={(e) => setDiscoverContent(e.target.value)}
                     />
-                    <Button 
+                    <Button
                       className="bg-purple-600 hover:bg-purple-700"
                       onClick={handleDiscover}
                       disabled={isDiscovering}
@@ -846,7 +1056,7 @@ export default function MemeMasterPro() {
                     </Button>
                   </div>
                   <p className="text-xs text-gray-500">
-                    💡 提示：复制大V的推文内容，系统将自动提取关键词并生成代币建议
+                    💡 提示：从上方选择大V，复制其推文内容，系统将自动提取关键词并生成代币建议
                   </p>
                 </div>
                 
