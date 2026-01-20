@@ -271,6 +271,29 @@ export const settings = pgTable(
 );
 
 // ============================================================================
+// 审计日志表
+// ============================================================================
+export const auditLogs = pgTable(
+  "audit_logs",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    event: varchar("event", { length: 128 }).notNull(),
+    details: jsonb("details").notNull(),
+    severity: varchar("severity", { length: 20 }).notNull(), // low, medium, high, critical
+    timestamp: timestamp("timestamp", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    eventIdx: index("audit_logs_event_idx").on(table.event),
+    severityIdx: index("audit_logs_severity_idx").on(table.severity),
+    timestampIdx: index("audit_logs_timestamp_idx").on(table.timestamp),
+  })
+);
+
+// ============================================================================
 // Zod Schemas for Validation
 // ============================================================================
 const { createInsertSchema: createCoercedInsertSchema } = createSchemaFactory({
@@ -480,6 +503,13 @@ export const updateSettingSchema = createCoercedInsertSchema(settings)
   })
   .partial();
 
+// Audit Logs schemas
+export const insertAuditLogSchema = createCoercedInsertSchema(auditLogs).pick({
+  event: true,
+  details: true,
+  severity: true,
+});
+
 // ============================================================================
 // TypeScript Types
 // ============================================================================
@@ -513,3 +543,6 @@ export type UpdatePortfolio = z.infer<typeof updatePortfolioSchema>;
 export type Setting = typeof settings.$inferSelect;
 export type InsertSetting = z.infer<typeof insertSettingSchema>;
 export type UpdateSetting = z.infer<typeof updateSettingSchema>;
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;

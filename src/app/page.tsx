@@ -694,13 +694,15 @@ export default function MemeMasterPro() {
     }
   };
   
-  // 加载 Jito 配置
+  // 加载 Jito 配置（仅显示掩码版本）
   const loadJitoConfig = async () => {
     try {
       const res = await fetch(`${API_BASE}/settings/jito`);
       const data = await res.json();
-      if (data.success && data.data.shredKey) {
-        setJitoShredKey(data.data.shredKey);
+      if (data.success && data.data.maskedKey) {
+        setJitoShredKey(data.data.maskedKey); // 只存储掩码版本
+      } else {
+        setJitoShredKey('');
       }
     } catch (error) {
       console.error('Error loading Jito config:', error);
@@ -2900,32 +2902,32 @@ export default function MemeMasterPro() {
                     </h4>
                     <div className="space-y-3">
                       <div>
-                        <Label className="text-gray-400 mb-2 block">Jito Shred Key</Label>
-                        <Input
-                          type="text"
-                          placeholder="输入你的 Jito Shred Key"
-                          value={jitoShredKey}
-                          onChange={(e) => setJitoShredKey(e.target.value)}
-                          className="bg-black/50 border-white/10 text-white"
-                        />
+                        <Label className="text-gray-400 mb-2 block">
+                          {jitoShredKey ? '当前已配置（仅显示掩码）' : 'Jito Shred Key'}
+                        </Label>
+                        {jitoShredKey ? (
+                          <div className="bg-black/50 border border-white/10 rounded-md p-3 text-white font-mono text-sm">
+                            {jitoShredKey}
+                          </div>
+                        ) : (
+                          <Input
+                            type="text"
+                            placeholder="输入你的 Jito Shred Key"
+                            value={jitoShredKey}
+                            onChange={(e) => setJitoShredKey(e.target.value)}
+                            className="bg-black/50 border-white/10 text-white"
+                          />
+                        )}
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={handleUpdateJitoConfig}
-                          disabled={isUpdatingJito || !jitoShredKey}
-                          className="bg-yellow-600 hover:bg-yellow-700"
-                        >
-                          {isUpdatingJito ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              保存中...
-                            </>
-                          ) : (
-                            '保存配置'
-                          )}
-                        </Button>
-                        {jitoShredKey && (
+                      {jitoShredKey ? (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => setJitoShredKey('')}
+                            className="bg-blue-600 hover:bg-blue-700"
+                          >
+                            更新配置
+                          </Button>
                           <Button
                             size="sm"
                             variant="destructive"
@@ -2933,10 +2935,31 @@ export default function MemeMasterPro() {
                           >
                             删除配置
                           </Button>
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={handleUpdateJitoConfig}
+                            disabled={isUpdatingJito || !jitoShredKey}
+                            className="bg-yellow-600 hover:bg-yellow-700"
+                          >
+                            {isUpdatingJito ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                保存中...
+                              </>
+                            ) : (
+                              '保存配置'
+                            )}
+                          </Button>
+                        </div>
+                      )}
                       <p className="text-xs text-gray-500">
                         Jito Shred Key 用于加速 Solana 交易，确保闪电卖出的快速执行。配置后，所有 Solana 链的自动卖出交易将使用 Jito Bundle 提交。
+                      </p>
+                      <p className="text-xs text-orange-400">
+                        ⚠️ 安全提示：Jito Shred Key 已加密存储，不会以明文形式传输到前端。
                       </p>
                     </div>
                   </div>

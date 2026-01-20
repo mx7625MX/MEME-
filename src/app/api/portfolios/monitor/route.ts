@@ -149,10 +149,23 @@ async function executeFlashSell(portfolio: any, db: any, reason: string, whaleAm
   
   if (portfolio.chain === 'solana') {
     try {
-      const [jitoConfig] = await db.select().from(settings).where(eq(settings.key, 'jito_shred_key'));
-      if (jitoConfig && jitoConfig.value) {
+      // 使用安全的密钥获取函数
+      const { getDecryptedJitoKey } = await import('@/lib/jitoKeyManager');
+      const decryptedKey = await getDecryptedJitoKey();
+      
+      if (decryptedKey) {
         useJito = true;
-        jitoShredKey = jitoConfig.value;
+        jitoShredKey = decryptedKey;
+        
+        // 记录审计日志
+        const { logAuditEvent } = await import('@/lib/audit');
+        await logAuditEvent('jito_key_accessed', {
+          action: 'access',
+          resource: 'jito_shred_key',
+          purpose: 'auto_sell',
+          portfolioId: portfolio.id,
+          timestamp: new Date().toISOString(),
+        });
       }
     } catch (error) {
       console.error('Error fetching Jito config:', error);
