@@ -150,6 +150,10 @@ export default function MemeMasterPro() {
   const [influencerAnalysis, setInfluencerAnalysis] = useState<any>(null);
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
 
+  // 钱包地址显示相关状态
+  const [showFullAddress, setShowFullAddress] = useState<Record<string, boolean>>({});
+  const [copiedAddress, setCopiedAddress] = useState<Record<string, boolean>>({});
+
   // 初始化数据
   useEffect(() => {
     initializeData();
@@ -294,15 +298,32 @@ export default function MemeMasterPro() {
     }
   };
 
+  // 切换显示完整地址
+  const toggleFullAddress = (walletId: string) => {
+    setShowFullAddress(prev => ({
+      ...prev,
+      [walletId]: !prev[walletId]
+    }));
+  };
+
   // 复制钱包地址
-  const handleCopyAddress = async (address: string) => {
+  const handleCopyAddress = async (walletId: string, address: string) => {
     try {
       await navigator.clipboard.writeText(address);
-      alert('地址已复制到剪贴板');
+      setCopiedAddress(prev => ({ ...prev, [walletId]: true }));
+      setTimeout(() => {
+        setCopiedAddress(prev => ({ ...prev, [walletId]: false }));
+      }, 2000);
     } catch (error) {
       console.error('Error copying address:', error);
       alert('复制失败');
     }
+  };
+
+  // 格式化地址显示
+  const formatAddress = (address: string) => {
+    if (address.length <= 20) return address;
+    return `${address.slice(0, 8)}...${address.slice(-8)}`;
   };
 
   // 智能发现
@@ -1110,7 +1131,13 @@ export default function MemeMasterPro() {
                                 <Badge className="bg-green-600">活跃</Badge>
                               )}
                             </div>
-                            <p className="text-sm text-gray-400 truncate">{wallet.address}</p>
+                            <p 
+                              className="text-sm text-gray-400 cursor-pointer hover:text-white transition-colors"
+                              onClick={() => toggleFullAddress(wallet.id)}
+                              title={showFullAddress[wallet.id] ? '点击折叠' : '点击展开完整地址'}
+                            >
+                              {showFullAddress[wallet.id] ? wallet.address : formatAddress(wallet.address)}
+                            </p>
                           </div>
                           <div className="flex items-center gap-4">
                             <div className="text-right">
@@ -1121,11 +1148,15 @@ export default function MemeMasterPro() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="text-gray-400 hover:text-white h-8 w-8"
-                                onClick={() => handleCopyAddress(wallet.address)}
-                                title="复制地址"
+                                className="text-gray-400 hover:text-white h-8 w-8 relative"
+                                onClick={() => handleCopyAddress(wallet.id, wallet.address)}
+                                title="复制完整地址"
                               >
-                                <Copy className="h-4 w-4" />
+                                {copiedAddress[wallet.id] ? (
+                                  <CheckCircle className="h-4 w-4 text-green-400" />
+                                ) : (
+                                  <Copy className="h-4 w-4" />
+                                )}
                               </Button>
                               <Button
                                 variant="ghost"
