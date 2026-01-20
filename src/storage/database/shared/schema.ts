@@ -163,6 +163,41 @@ export const aiSentiments = pgTable(
 );
 
 // ============================================================================
+// 自动交易配置表
+// ============================================================================
+export const autoTrades = pgTable(
+  "auto_trades",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    walletId: varchar("wallet_id", { length: 36 }).notNull(),
+    name: varchar("name", { length: 128 }).notNull(),
+    chain: varchar("chain", { length: 20 }).notNull(),
+    tokenAddress: varchar("token_address", { length: 256 }),
+    tokenSymbol: varchar("token_symbol", { length: 32 }),
+    tradeType: varchar("trade_type", { length: 20 }).notNull(), // buy, sell, snipe
+    condition: varchar("condition", { length: 32 }).notNull(), // price_above, price_below, volume_above, sentiment_change
+    conditionValue: decimal("condition_value", { precision: 30, scale: 18 }),
+    amount: decimal("amount", { precision: 30, scale: 18 }).notNull(),
+    slippage: integer("slippage").default(5), // 滑点容忍度 %
+    isEnabled: boolean("is_enabled").default(true).notNull(),
+    executedCount: integer("executed_count").default(0).notNull(),
+    lastExecutedAt: timestamp("last_executed_at", { withTimezone: true }),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+  },
+  (table) => ({
+    walletIdx: index("auto_trades_wallet_idx").on(table.walletId),
+    chainIdx: index("auto_trades_chain_idx").on(table.chain),
+    enabledIdx: index("auto_trades_enabled_idx").on(table.isEnabled),
+  })
+);
+
+// ============================================================================
 // 配置表
 // ============================================================================
 export const settings = pgTable(
@@ -291,6 +326,34 @@ export const insertAiSentimentSchema = createCoercedInsertSchema(aiSentiments).p
   metadata: true,
 });
 
+// Auto Trade schemas
+export const insertAutoTradeSchema = createCoercedInsertSchema(autoTrades).pick({
+  walletId: true,
+  name: true,
+  chain: true,
+  tokenAddress: true,
+  tokenSymbol: true,
+  tradeType: true,
+  condition: true,
+  conditionValue: true,
+  amount: true,
+  slippage: true,
+  isEnabled: true,
+  metadata: true,
+});
+
+export const updateAutoTradeSchema = createCoercedInsertSchema(autoTrades)
+  .pick({
+    name: true,
+    condition: true,
+    conditionValue: true,
+    amount: true,
+    slippage: true,
+    isEnabled: true,
+    metadata: true,
+  })
+  .partial();
+
 // Settings schemas
 export const insertSettingSchema = createCoercedInsertSchema(settings).pick({
   key: true,
@@ -328,6 +391,10 @@ export type UpdateMarketData = z.infer<typeof updateMarketDataSchema>;
 
 export type AiSentiment = typeof aiSentiments.$inferSelect;
 export type InsertAiSentiment = z.infer<typeof insertAiSentimentSchema>;
+
+export type AutoTrade = typeof autoTrades.$inferSelect;
+export type InsertAutoTrade = z.infer<typeof insertAutoTradeSchema>;
+export type UpdateAutoTrade = z.infer<typeof updateAutoTradeSchema>;
 
 export type Setting = typeof settings.$inferSelect;
 export type InsertSetting = z.infer<typeof insertSettingSchema>;

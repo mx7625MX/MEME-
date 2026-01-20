@@ -75,6 +75,53 @@ export default function MemeMasterPro() {
   const [isCreatingWallet, setIsCreatingWallet] = useState('');
   const [aiAnalysisResult, setAiAnalysisResult] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  
+  // 发币相关状态
+  const [launchForm, setLaunchForm] = useState({
+    walletId: '',
+    tokenName: '',
+    tokenSymbol: '',
+    totalSupply: '',
+    liquidity: ''
+  });
+  const [isLaunching, setIsLaunching] = useState(false);
+  
+  // 闪电卖出相关状态
+  const [sellForm, setSellForm] = useState({
+    walletId: '',
+    tokenAddress: '',
+    tokenSymbol: '',
+    amount: '',
+    slippage: '5'
+  });
+  const [isSelling, setIsSelling] = useState(false);
+  
+  // 转账相关状态
+  const [transferForm, setTransferForm] = useState({
+    walletId: '',
+    toAddress: '',
+    tokenSymbol: '',
+    amount: '',
+    isNative: true
+  });
+  const [isTransferring, setIsTransferring] = useState(false);
+  
+  // 交易历史
+  const [transactions, setTransactions] = useState<any[]>([]);
+  
+  // 自动交易配置
+  const [autoTrades, setAutoTrades] = useState<any[]>([]);
+  const [autoTradeForm, setAutoTradeForm] = useState({
+    walletId: '',
+    name: '',
+    chain: 'solana',
+    tradeType: 'buy',
+    condition: 'price_above',
+    conditionValue: '',
+    amount: '',
+    slippage: '5'
+  });
+  const [isCreatingAutoTrade, setIsCreatingAutoTrade] = useState(false);
 
   // 初始化数据
   useEffect(() => {
@@ -99,7 +146,9 @@ export default function MemeMasterPro() {
       await Promise.all([
         loadWallets(),
         loadMarketData(),
-        loadStats()
+        loadStats(),
+        loadTransactions(),
+        loadAutoTrades()
       ]);
     } catch (error) {
       console.error('Error initializing data:', error);
@@ -141,6 +190,30 @@ export default function MemeMasterPro() {
       }
     } catch (error) {
       console.error('Error loading stats:', error);
+    }
+  };
+  
+  const loadTransactions = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/transactions`);
+      const data = await res.json();
+      if (data.success) {
+        setTransactions(data.data);
+      }
+    } catch (error) {
+      console.error('Error loading transactions:', error);
+    }
+  };
+  
+  const loadAutoTrades = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/auto-trades`);
+      const data = await res.json();
+      if (data.success) {
+        setAutoTrades(data.data);
+      }
+    } catch (error) {
+      console.error('Error loading auto trades:', error);
     }
   };
 
@@ -190,6 +263,195 @@ export default function MemeMasterPro() {
       console.error('Error analyzing sentiment:', error);
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+  
+  // 发币
+  const handleLaunchToken = async () => {
+    if (!launchForm.walletId || !launchForm.tokenName || !launchForm.tokenSymbol || !launchForm.totalSupply) {
+      alert('请填写所有必填字段');
+      return;
+    }
+    
+    try {
+      setIsLaunching(true);
+      const res = await fetch(`${API_BASE}/tokens/launch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(launchForm)
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        alert(data.data.message);
+        setLaunchForm({
+          walletId: '',
+          tokenName: '',
+          tokenSymbol: '',
+          totalSupply: '',
+          liquidity: ''
+        });
+        loadTransactions();
+      } else {
+        alert(data.error);
+      }
+    } catch (error) {
+      console.error('Error launching token:', error);
+      alert('发币失败');
+    } finally {
+      setIsLaunching(false);
+    }
+  };
+  
+  // 闪电卖出
+  const handleFlashSell = async () => {
+    if (!sellForm.walletId || !sellForm.tokenAddress || !sellForm.tokenSymbol || !sellForm.amount) {
+      alert('请填写所有必填字段');
+      return;
+    }
+    
+    try {
+      setIsSelling(true);
+      const res = await fetch(`${API_BASE}/tokens/sell`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sellForm)
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        alert(data.data.message);
+        setSellForm({
+          walletId: '',
+          tokenAddress: '',
+          tokenSymbol: '',
+          amount: '',
+          slippage: '5'
+        });
+        loadTransactions();
+        loadWallets();
+      } else {
+        alert(data.error);
+      }
+    } catch (error) {
+      console.error('Error selling token:', error);
+      alert('闪电卖出失败');
+    } finally {
+      setIsSelling(false);
+    }
+  };
+  
+  // 转账
+  const handleTransfer = async () => {
+    if (!transferForm.walletId || !transferForm.toAddress || !transferForm.amount) {
+      alert('请填写所有必填字段');
+      return;
+    }
+    
+    try {
+      setIsTransferring(true);
+      const res = await fetch(`${API_BASE}/tokens/transfer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(transferForm)
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        alert(data.data.message);
+        setTransferForm({
+          walletId: '',
+          toAddress: '',
+          tokenSymbol: '',
+          amount: '',
+          isNative: true
+        });
+        loadTransactions();
+        loadWallets();
+      } else {
+        alert(data.error);
+      }
+    } catch (error) {
+      console.error('Error transferring:', error);
+      alert('转账失败');
+    } finally {
+      setIsTransferring(false);
+    }
+  };
+  
+  // 创建自动交易配置
+  const handleCreateAutoTrade = async () => {
+    if (!autoTradeForm.walletId || !autoTradeForm.name || !autoTradeForm.amount) {
+      alert('请填写所有必填字段');
+      return;
+    }
+    
+    try {
+      setIsCreatingAutoTrade(true);
+      const res = await fetch(`${API_BASE}/auto-trades`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(autoTradeForm)
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        setAutoTradeForm({
+          walletId: '',
+          name: '',
+          chain: 'solana',
+          tradeType: 'buy',
+          condition: 'price_above',
+          conditionValue: '',
+          amount: '',
+          slippage: '5'
+        });
+        loadAutoTrades();
+      } else {
+        alert(data.error);
+      }
+    } catch (error) {
+      console.error('Error creating auto trade:', error);
+      alert('创建自动交易配置失败');
+    } finally {
+      setIsCreatingAutoTrade(false);
+    }
+  };
+  
+  // 切换自动交易开关
+  const toggleAutoTrade = async (id: string, isEnabled: boolean) => {
+    try {
+      const res = await fetch(`${API_BASE}/auto-trades/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isEnabled })
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        loadAutoTrades();
+      }
+    } catch (error) {
+      console.error('Error toggling auto trade:', error);
+    }
+  };
+  
+  // 删除自动交易配置
+  const deleteAutoTrade = async (id: string) => {
+    if (!confirm('确定要删除这个自动交易配置吗？')) return;
+    
+    try {
+      const res = await fetch(`${API_BASE}/auto-trades/${id}`, {
+        method: 'DELETE'
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        loadAutoTrades();
+      }
+    } catch (error) {
+      console.error('Error deleting auto trade:', error);
     }
   };
 
@@ -309,8 +571,13 @@ export default function MemeMasterPro() {
           <TabsList className="bg-black/20 border border-white/10 p-1 flex-wrap gap-1">
             <TabsTrigger value="dashboard">仪表盘</TabsTrigger>
             <TabsTrigger value="wallets">钱包管理</TabsTrigger>
+            <TabsTrigger value="launch">发币系统</TabsTrigger>
+            <TabsTrigger value="trading">闪电卖出</TabsTrigger>
+            <TabsTrigger value="transfer">转账</TabsTrigger>
             <TabsTrigger value="market">市场监控</TabsTrigger>
             <TabsTrigger value="sentiment">AI情绪分析</TabsTrigger>
+            <TabsTrigger value="history">交易历史</TabsTrigger>
+            <TabsTrigger value="autotrade">自动交易</TabsTrigger>
           </TabsList>
 
           {/* 仪表盘 */}
@@ -336,6 +603,10 @@ export default function MemeMasterPro() {
                       <li>✅ 市场数据监控</li>
                       <li>✅ AI 情绪分析</li>
                       <li>✅ 实时价格更新</li>
+                      <li>✅ 发币系统</li>
+                      <li>✅ 闪电卖出</li>
+                      <li>✅ 转账功能</li>
+                      <li>✅ 自动交易配置</li>
                     </ul>
                   </div>
                   <div className="space-y-2">
@@ -583,6 +854,477 @@ export default function MemeMasterPro() {
                     <p>输入代币符号开始 AI 情绪分析</p>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* 发币系统 */}
+          <TabsContent value="launch" className="space-y-4">
+            <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white">发币系统</CardTitle>
+                <CardDescription className="text-gray-400">
+                  一键创建并发布你的 Meme 代币
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                  <div>
+                    <Label className="text-gray-400">选择钱包</Label>
+                    <select
+                      className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2"
+                      value={launchForm.walletId}
+                      onChange={(e) => setLaunchForm({...launchForm, walletId: e.target.value})}
+                    >
+                      <option value="">选择钱包</option>
+                      {wallets.map((wallet) => (
+                        <option key={wallet.id} value={wallet.id}>
+                          {wallet.name} ({wallet.chain.toUpperCase()})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">代币名称</Label>
+                    <Input
+                      className="mt-1 bg-black/50 border-white/10 text-white"
+                      placeholder="Pepe Coin"
+                      value={launchForm.tokenName}
+                      onChange={(e) => setLaunchForm({...launchForm, tokenName: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">代币符号</Label>
+                    <Input
+                      className="mt-1 bg-black/50 border-white/10 text-white"
+                      placeholder="PEPE"
+                      value={launchForm.tokenSymbol}
+                      onChange={(e) => setLaunchForm({...launchForm, tokenSymbol: e.target.value.toUpperCase()})}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">总供应量</Label>
+                    <Input
+                      className="mt-1 bg-black/50 border-white/10 text-white"
+                      placeholder="1000000000"
+                      type="number"
+                      value={launchForm.totalSupply}
+                      onChange={(e) => setLaunchForm({...launchForm, totalSupply: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">初始流动性 (可选)</Label>
+                    <Input
+                      className="mt-1 bg-black/50 border-white/10 text-white"
+                      placeholder="10"
+                      type="number"
+                      value={launchForm.liquidity}
+                      onChange={(e) => setLaunchForm({...launchForm, liquidity: e.target.value})}
+                    />
+                  </div>
+                  <Button
+                    className="w-full bg-purple-600 hover:bg-purple-700"
+                    onClick={handleLaunchToken}
+                    disabled={isLaunching}
+                  >
+                    {isLaunching ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        发币中...
+                      </>
+                    ) : (
+                      <>
+                        <Rocket className="mr-2 h-4 w-4" />
+                        立即发币
+                      </>
+                    )}
+                  </Button>
+                </div>
+                
+                <div className="space-y-2 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <p className="text-sm text-yellow-400 font-semibold">⚠️ 发币注意事项</p>
+                  <ul className="text-xs text-yellow-300 space-y-1">
+                    <li>• 发币需要支付少量 gas 费</li>
+                    <li>• 代币发布后不可撤销</li>
+                    <li>• 建议先在测试链测试</li>
+                    <li>• 流动性越多，交易越流畅</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* 闪电卖出 */}
+          <TabsContent value="trading" className="space-y-4">
+            <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white">闪电卖出</CardTitle>
+                <CardDescription className="text-gray-400">
+                  快速卖出代币，无需等待
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                  <div>
+                    <Label className="text-gray-400">选择钱包</Label>
+                    <select
+                      className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2"
+                      value={sellForm.walletId}
+                      onChange={(e) => setSellForm({...sellForm, walletId: e.target.value})}
+                    >
+                      <option value="">选择钱包</option>
+                      {wallets.map((wallet) => (
+                        <option key={wallet.id} value={wallet.id}>
+                          {wallet.name} ({wallet.chain.toUpperCase()})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">代币地址</Label>
+                    <Input
+                      className="mt-1 bg-black/50 border-white/10 text-white"
+                      placeholder="0x..."
+                      value={sellForm.tokenAddress}
+                      onChange={(e) => setSellForm({...sellForm, tokenAddress: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">代币符号</Label>
+                    <Input
+                      className="mt-1 bg-black/50 border-white/10 text-white"
+                      placeholder="PEPE"
+                      value={sellForm.tokenSymbol}
+                      onChange={(e) => setSellForm({...sellForm, tokenSymbol: e.target.value.toUpperCase()})}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">卖出数量</Label>
+                    <Input
+                      className="mt-1 bg-black/50 border-white/10 text-white"
+                      placeholder="1000"
+                      type="number"
+                      value={sellForm.amount}
+                      onChange={(e) => setSellForm({...sellForm, amount: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">滑点容忍度 (%)</Label>
+                    <Input
+                      className="mt-1 bg-black/50 border-white/10 text-white"
+                      type="number"
+                      value={sellForm.slippage}
+                      onChange={(e) => setSellForm({...sellForm, slippage: e.target.value})}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">滑点越高，成交越快，但可能损失更多</p>
+                  </div>
+                  <Button
+                    className="w-full bg-red-600 hover:bg-red-700"
+                    onClick={handleFlashSell}
+                    disabled={isSelling}
+                  >
+                    {isSelling ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        卖出中...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="mr-2 h-4 w-4" />
+                        闪电卖出
+                      </>
+                    )}
+                  </Button>
+                </div>
+                
+                <div className="space-y-2 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                  <p className="text-sm text-blue-400 font-semibold">⚡ 闪电卖出说明</p>
+                  <ul className="text-xs text-blue-300 space-y-1">
+                    <li>• 通过 DEX (Raydium/PancakeSwap/Uniswap) 快速卖出</li>
+                    <li>• 设置适当的滑点以避免交易失败</li>
+                    <li>• 建议在行情波动大时使用高滑点</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* 转账 */}
+          <TabsContent value="transfer" className="space-y-4">
+            <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white">转账</CardTitle>
+                <CardDescription className="text-gray-400">
+                  向其他地址转账代币
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                  <div>
+                    <Label className="text-gray-400">选择钱包</Label>
+                    <select
+                      className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2"
+                      value={transferForm.walletId}
+                      onChange={(e) => setTransferForm({...transferForm, walletId: e.target.value})}
+                    >
+                      <option value="">选择钱包</option>
+                      {wallets.map((wallet) => (
+                        <option key={wallet.id} value={wallet.id}>
+                          {wallet.name} ({wallet.chain.toUpperCase()}) - {wallet.balance}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">接收地址</Label>
+                    <Input
+                      className="mt-1 bg-black/50 border-white/10 text-white"
+                      placeholder="0x... 或 Solana 地址"
+                      value={transferForm.toAddress}
+                      onChange={(e) => setTransferForm({...transferForm, toAddress: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">代币符号 (可选)</Label>
+                    <Input
+                      className="mt-1 bg-black/50 border-white/10 text-white"
+                      placeholder="ETH 或留空转账原生代币"
+                      value={transferForm.tokenSymbol}
+                      onChange={(e) => setTransferForm({...transferForm, tokenSymbol: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">转账数量</Label>
+                    <Input
+                      className="mt-1 bg-black/50 border-white/10 text-white"
+                      placeholder="1.0"
+                      type="number"
+                      step="0.0001"
+                      value={transferForm.amount}
+                      onChange={(e) => setTransferForm({...transferForm, amount: e.target.value})}
+                    />
+                  </div>
+                  <Button
+                    className="w-full bg-green-600 hover:bg-green-700"
+                    onClick={handleTransfer}
+                    disabled={isTransferring}
+                  >
+                    {isTransferring ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        转账中...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="mr-2 h-4 w-4" />
+                        确认转账
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* 交易历史 */}
+          <TabsContent value="history" className="space-y-4">
+            <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white">交易历史</CardTitle>
+                <CardDescription className="text-gray-400">
+                  查看所有交易记录
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {transactions.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">暂无交易记录</p>
+                ) : (
+                  <div className="space-y-3">
+                    {transactions.map((tx) => (
+                      <div key={tx.id} className="flex items-center justify-between rounded-lg bg-black/30 p-4 border border-white/10">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-white font-medium">
+                              {tx.type === 'launch' && '🚀 发币'}
+                              {tx.type === 'buy' && '💰 买入'}
+                              {tx.type === 'sell' && '💸 卖出'}
+                              {tx.type === 'transfer' && '📤 转账'}
+                            </span>
+                            <Badge variant="outline" className="border-white/20">
+                              {tx.chain.toUpperCase()}
+                            </Badge>
+                            {tx.tokenSymbol && (
+                              <Badge variant="secondary">{tx.tokenSymbol}</Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-400">
+                            {tx.amount} {tx.tokenSymbol || tx.chain.toUpperCase()}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(tx.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <Badge 
+                            variant={tx.status === 'completed' ? 'default' : tx.status === 'pending' ? 'secondary' : 'destructive'}
+                            className={tx.status === 'completed' ? 'bg-green-600' : ''}
+                          >
+                            {tx.status === 'completed' ? '完成' : tx.status === 'pending' ? '处理中' : '失败'}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* 自动交易 */}
+          <TabsContent value="autotrade" className="space-y-4">
+            <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white">自动交易</CardTitle>
+                <CardDescription className="text-gray-400">
+                  设置自动交易策略，无需时刻盯盘
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                  <div>
+                    <Label className="text-gray-400">配置名称</Label>
+                    <Input
+                      className="mt-1 bg-black/50 border-white/10 text-white"
+                      placeholder="PEPE 价格突破策略"
+                      value={autoTradeForm.name}
+                      onChange={(e) => setAutoTradeForm({...autoTradeForm, name: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">选择钱包</Label>
+                    <select
+                      className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2"
+                      value={autoTradeForm.walletId}
+                      onChange={(e) => setAutoTradeForm({...autoTradeForm, walletId: e.target.value})}
+                    >
+                      <option value="">选择钱包</option>
+                      {wallets.map((wallet) => (
+                        <option key={wallet.id} value={wallet.id}>
+                          {wallet.name} ({wallet.chain.toUpperCase()})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">交易类型</Label>
+                    <select
+                      className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2"
+                      value={autoTradeForm.tradeType}
+                      onChange={(e) => setAutoTradeForm({...autoTradeForm, tradeType: e.target.value})}
+                    >
+                      <option value="buy">买入</option>
+                      <option value="sell">卖出</option>
+                      <option value="snipe">狙击</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">触发条件</Label>
+                    <select
+                      className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2"
+                      value={autoTradeForm.condition}
+                      onChange={(e) => setAutoTradeForm({...autoTradeForm, condition: e.target.value})}
+                    >
+                      <option value="price_above">价格高于</option>
+                      <option value="price_below">价格低于</option>
+                      <option value="volume_above">成交量高于</option>
+                      <option value="sentiment_change">情绪变化</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">触发值</Label>
+                    <Input
+                      className="mt-1 bg-black/50 border-white/10 text-white"
+                      placeholder="0.001"
+                      type="number"
+                      step="0.0001"
+                      value={autoTradeForm.conditionValue}
+                      onChange={(e) => setAutoTradeForm({...autoTradeForm, conditionValue: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">交易数量</Label>
+                    <Input
+                      className="mt-1 bg-black/50 border-white/10 text-white"
+                      placeholder="1000"
+                      type="number"
+                      value={autoTradeForm.amount}
+                      onChange={(e) => setAutoTradeForm({...autoTradeForm, amount: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">滑点容忍度 (%)</Label>
+                    <Input
+                      className="mt-1 bg-black/50 border-white/10 text-white"
+                      type="number"
+                      value={autoTradeForm.slippage}
+                      onChange={(e) => setAutoTradeForm({...autoTradeForm, slippage: e.target.value})}
+                    />
+                  </div>
+                  <Button
+                    className="w-full bg-purple-600 hover:bg-purple-700"
+                    onClick={handleCreateAutoTrade}
+                    disabled={isCreatingAutoTrade}
+                  >
+                    {isCreatingAutoTrade ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        创建中...
+                      </>
+                    ) : (
+                      '创建策略'
+                    )}
+                  </Button>
+                </div>
+                
+                <div className="space-y-3">
+                  <h3 className="text-white font-semibold">我的策略</h3>
+                  {autoTrades.length === 0 ? (
+                    <p className="text-gray-500 text-center py-8">暂无策略</p>
+                  ) : (
+                    autoTrades.map((trade) => (
+                      <div key={trade.id} className="flex items-center justify-between rounded-lg bg-black/30 p-4 border border-white/10">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-white font-medium">{trade.name}</span>
+                            <Badge variant={trade.isEnabled ? 'default' : 'secondary'}>
+                              {trade.isEnabled ? '启用' : '禁用'}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-400">
+                            {trade.tradeType === 'buy' ? '买入' : trade.tradeType === 'sell' ? '卖出' : '狙击'} - {trade.condition}
+                          </p>
+                          <p className="text-xs text-gray-500">执行次数: {trade.executedCount}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => toggleAutoTrade(trade.id, !trade.isEnabled)}
+                          >
+                            {trade.isEnabled ? '禁用' : '启用'}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => deleteAutoTrade(trade.id)}
+                          >
+                            删除
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
