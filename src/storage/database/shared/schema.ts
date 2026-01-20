@@ -271,6 +271,46 @@ export const settings = pgTable(
 );
 
 // ============================================================================
+// 流动性池表
+// ============================================================================
+export const liquidityPools = pgTable(
+  "liquidity_pools",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    chain: varchar("chain", { length: 32 }).notNull(), // solana, eth, bsc
+    tokenAddress: varchar("token_address", { length: 128 }).notNull(), // 发行的代币地址
+    tokenSymbol: varchar("token_symbol", { length: 32 }).notNull(),
+    pairTokenSymbol: varchar("pair_token_symbol", { length: 32 }).notNull(), // SOL, ETH, BNB 等
+    pairTokenAddress: varchar("pair_token_address", { length: 128 }).notNull(),
+    dex: varchar("dex", { length: 64 }).notNull(), // raydium, uniswap, pancakeswap 等
+    poolAddress: varchar("pool_address", { length: 128 }).unique().notNull(),
+    tokenAmount: decimal("token_amount", { precision: 30, scale: 18 }).notNull(),
+    pairTokenAmount: decimal("pair_token_amount", { precision: 30, scale: 18 }).notNull(),
+    totalLiquidity: decimal("total_liquidity", { precision: 30, scale: 18 }).notNull(),
+    lpTokenAmount: decimal("lp_token_amount", { precision: 30, scale: 18 }).notNull(),
+    initialPrice: decimal("initial_price", { precision: 30, scale: 18 }).notNull(),
+    status: varchar("status", { length: 32 }).notNull().default("active"), // active, closed, migrated
+    locked: boolean("locked").notNull().default(false), // 是否锁定流动性
+    lockEndTime: timestamp("lock_end_time", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    metadata: jsonb("metadata").$type<Record<string, any>>().default({}),
+  },
+  (table) => ({
+    chainIdx: index("liquidity_pools_chain_idx").on(table.chain),
+    tokenIdx: index("liquidity_pools_token_idx").on(table.tokenAddress),
+    dexIdx: index("liquidity_pools_dex_idx").on(table.dex),
+    statusIdx: index("liquidity_pools_status_idx").on(table.status),
+  })
+);
+
+// ============================================================================
 // 审计日志表
 // ============================================================================
 export const auditLogs = pgTable(
@@ -503,6 +543,40 @@ export const updateSettingSchema = createCoercedInsertSchema(settings)
   })
   .partial();
 
+// Liquidity Pool schemas
+export const insertLiquidityPoolSchema = createCoercedInsertSchema(liquidityPools).pick({
+  chain: true,
+  tokenAddress: true,
+  tokenSymbol: true,
+  pairTokenSymbol: true,
+  pairTokenAddress: true,
+  dex: true,
+  poolAddress: true,
+  tokenAmount: true,
+  pairTokenAmount: true,
+  totalLiquidity: true,
+  lpTokenAmount: true,
+  initialPrice: true,
+  status: true,
+  locked: true,
+  lockEndTime: true,
+  metadata: true,
+});
+
+export const updateLiquidityPoolSchema = createCoercedInsertSchema(liquidityPools)
+  .pick({
+    tokenAmount: true,
+    pairTokenAmount: true,
+    totalLiquidity: true,
+    lpTokenAmount: true,
+    status: true,
+    locked: true,
+    lockEndTime: true,
+    updatedAt: true,
+    metadata: true,
+  })
+  .partial();
+
 // Audit Logs schemas
 export const insertAuditLogSchema = createCoercedInsertSchema(auditLogs).pick({
   event: true,
@@ -543,6 +617,10 @@ export type UpdatePortfolio = z.infer<typeof updatePortfolioSchema>;
 export type Setting = typeof settings.$inferSelect;
 export type InsertSetting = z.infer<typeof insertSettingSchema>;
 export type UpdateSetting = z.infer<typeof updateSettingSchema>;
+
+export type LiquidityPool = typeof liquidityPools.$inferSelect;
+export type InsertLiquidityPool = z.infer<typeof insertLiquidityPoolSchema>;
+export type UpdateLiquidityPool = z.infer<typeof updateLiquidityPoolSchema>;
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;

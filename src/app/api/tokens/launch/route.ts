@@ -1,8 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from 'coze-coding-dev-sdk';
-import { transactions, tokens, portfolios } from '@/storage/database/shared/schema';
-import { insertTransactionSchema, insertTokenSchema, insertPortfolioSchema } from '@/storage/database/shared/schema';
+import { transactions, tokens, portfolios, liquidityPools, wallets } from '@/storage/database/shared/schema';
+import { insertTransactionSchema, insertTokenSchema, insertPortfolioSchema, insertLiquidityPoolSchema } from '@/storage/database/shared/schema';
 import { eq } from 'drizzle-orm';
+
+// DEX 配置
+const DEX_CONFIG: Record<string, {
+  default: string;
+  pairTokens: Record<string, string>;
+}> = {
+  solana: {
+    default: 'raydium',
+    pairTokens: {
+      SOL: 'So11111111111111111111111111111111111111112',
+    },
+  },
+  eth: {
+    default: 'uniswap',
+    pairTokens: {
+      WETH: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+    },
+  },
+  bsc: {
+    default: 'pancakeswap',
+    pairTokens: {
+      USDT: '0x55d398326f99059fF775485246999027B3197955',
+    },
+  },
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -163,6 +188,113 @@ export async function POST(request: NextRequest) {
       .values(validatedPortfolioData)
       .returning();
 
+    // ========================================
+    // 自动添加流动性（做市值）
+    // ========================================
+    let liquidityPool = null;
+    let liquidityTransaction = null;
+    
+    if (body.addLiquidity !== false) { // 默认启用
+      const liquidityTokenAmount = body.liquidityTokenAmount || (parseFloat(totalSupply) * 0.5).toString(); // 默认使用 50% 供应量
+      const liquidityPairTokenAmount = body.liquidityPairTokenAmount || '1'; // 默认配对 1 SOL/ETH/USDT
+      
+      // 获取钱包信息
+      const [wallet] = await db.select().from(wallets).where(eq(wallets.id, walletId));
+      
+      // 选择 DEX 和配对代币
+      const chainConfig = DEX_CONFIG[chain];
+      const selectedDex = chainConfig?.default || 'auto';
+      const defaultPairToken = Object.keys(chainConfig?.pairTokens || {})[0];
+      const selectedPairTokenSymbol = body.pairTokenSymbol || defaultPairToken;
+      const pairTokenAddress = chainConfig?.pairTokens?.[selectedPairTokenSymbol];
+      
+      // 计算初始价格
+      const initialPrice = parseFloat(liquidityPairTokenAmount) / parseFloat(liquidityTokenAmount);
+      
+      // 模拟流动性池地址
+      const mockPoolAddress = `0x${Array.from({ length: 40 }, () => 
+        Math.floor(Math.random() * 16).toString(16)
+      ).join('')}`;
+      
+      const mockLiquidityTxHash = `0x${Array.from({ length: 64 }, () => 
+        Math.floor(Math.random() * 16).toString(16)
+      ).join('')}`;
+      
+      // 计算锁定期
+      const lockLiquidity = body.lockLiquidity !== false; // 默认锁定
+      const lockDuration = body.lockDuration || 7; // 默认 7 天
+      const lockEndTime = lockLiquidity 
+        ? new Date(Date.now() + lockDuration * 24 * 60 * 60 * 1000)
+        : null;
+      
+      // 创建流动性池记录
+      const newLiquidityPool = {
+        chain,
+        tokenAddress: mockTokenAddress,
+        tokenSymbol,
+        pairTokenSymbol: selectedPairTokenSymbol,
+        pairTokenAddress,
+        dex: selectedDex,
+        poolAddress: mockPoolAddress,
+        tokenAmount: liquidityTokenAmount,
+        pairTokenAmount: liquidityPairTokenAmount,
+        totalLiquidity: (parseFloat(liquidityTokenAmount) * initialPrice * 2).toString(),
+        lpTokenAmount: (Math.sqrt(parseFloat(liquidityTokenAmount) * parseFloat(liquidityPairTokenAmount))).toString(),
+        initialPrice: initialPrice.toString(),
+        status: 'active',
+        locked: lockLiquidity,
+        lockEndTime,
+        metadata: {
+          dexName: selectedDex,
+          txHash: mockLiquidityTxHash,
+          launchTxHash: (transaction.metadata as any)?.txHash,
+          lockDuration,
+        }
+      };
+      
+      const validatedPoolData = insertLiquidityPoolSchema.parse(newLiquidityPool);
+      [liquidityPool] = await db.insert(liquidityPools)
+        .values(validatedPoolData)
+        .returning();
+      
+      // 创建流动性添加交易记录
+      const newLiquidityTransaction = {
+        walletId,
+        type: 'add_liquidity' as const,
+        chain,
+        tokenAddress: mockTokenAddress,
+        tokenSymbol,
+        amount: liquidityTokenAmount,
+        price: initialPrice.toString(),
+        fee: (parseFloat(liquidityPairTokenAmount) * 0.003).toString(),
+        status: 'completed' as const,
+        metadata: {
+          pairTokenSymbol: selectedPairTokenSymbol,
+          pairTokenAmount: liquidityPairTokenAmount,
+          dex: selectedDex,
+          poolAddress: mockPoolAddress,
+          txHash: mockLiquidityTxHash,
+          locked: lockLiquidity,
+          lockDuration,
+        }
+      };
+      
+      const validatedLiquidityTxData = insertTransactionSchema.parse(newLiquidityTransaction);
+      [liquidityTransaction] = await db.insert(transactions)
+        .values(validatedLiquidityTxData)
+        .returning();
+      
+      // 更新代币的流动性和价格
+      await db.update(tokens)
+        .set({
+          liquidity: liquidityPool.totalLiquidity,
+          price: initialPrice.toString(),
+          marketCap: (parseFloat(totalSupply) * initialPrice).toString(),
+          updatedAt: new Date(),
+        })
+        .where(eq(tokens.address, mockTokenAddress));
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -170,7 +302,11 @@ export async function POST(request: NextRequest) {
         transaction,
         bundleBuyTransaction, // 捆绑买入交易记录
         portfolio,
-        message: `代币发行成功！已自动创建持仓并启用闪电卖出监控。您是第一个买家（买入 ${bundleBuyPercentValue}% 供应量）`
+        liquidityPool,
+        liquidityTransaction,
+        message: liquidityPool
+          ? `代币发行成功！已自动添加流动性到 ${liquidityPool.metadata?.dexName || 'DEX'}（${tokenSymbol}/${liquidityPool.pairTokenSymbol}），已锁定 ${body.lockDuration || 7} 天。您是第一个买家（买入 ${bundleBuyPercentValue}% 供应量）`
+          : `代币发行成功！已自动创建持仓并启用闪电卖出监控。您是第一个买家（买入 ${bundleBuyPercentValue}% 供应量）`
       }
     });
 

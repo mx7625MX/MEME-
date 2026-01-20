@@ -99,7 +99,14 @@ export default function MemeMasterPro() {
     liquidity: '',
     imageUrl: '',
     imageKey: '',
-    bundleBuyPercent: '10' // 默认捆绑买入 10%
+    bundleBuyPercent: '10', // 默认捆绑买入 10%
+    // 流动性配置（做市值）
+    addLiquidity: true, // 默认开启
+    liquidityTokenPercent: '50', // 默认使用 50% 供应量
+    pairTokenSymbol: 'auto', // 自动选择配对代币
+    pairTokenAmount: '1', // 默认配对 1 SOL/ETH/USDT
+    lockLiquidity: true, // 默认锁定流动性
+    lockDuration: '7', // 默认锁定 7 天
   });
   const [isLaunching, setIsLaunching] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -491,7 +498,13 @@ export default function MemeMasterPro() {
           liquidity: '',
           imageUrl: '',
           imageKey: '',
-          bundleBuyPercent: '10'
+          bundleBuyPercent: '10',
+          addLiquidity: true,
+          liquidityTokenPercent: '50',
+          pairTokenSymbol: 'auto',
+          pairTokenAmount: '1',
+          lockLiquidity: true,
+          lockDuration: '7',
         });
         loadTransactions();
       } else {
@@ -2442,6 +2455,123 @@ export default function MemeMasterPro() {
                       onChange={(e) => setLaunchForm({...launchForm, liquidity: e.target.value})}
                     />
                   </div>
+                  
+                  {/* 流动性配置（做市值） */}
+                  <div className="p-4 bg-gradient-to-r from-blue-900/30 to-cyan-900/30 rounded-lg border border-blue-500/30 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-gray-300 font-semibold flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4 text-blue-400" />
+                        自动添加流动性（做市值）
+                      </Label>
+                      <input
+                        type="checkbox"
+                        checked={launchForm.addLiquidity}
+                        onChange={(e) => setLaunchForm({...launchForm, addLiquidity: e.target.checked})}
+                        className="w-5 h-5 rounded border-white/20 bg-black/50 text-purple-600 focus:ring-purple-500"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      自动将代币添加到去中心化交易所（DEX），创建交易对并提供流动性，让代币可以交易
+                    </p>
+                    
+                    {launchForm.addLiquidity && (
+                      <div className="space-y-3 mt-3 pl-4 border-l-2 border-blue-500/50">
+                        {/* 流动性代币数量 */}
+                        <div>
+                          <Label className="text-gray-400 text-sm">流动性代币数量（供应量比例）</Label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Input
+                              className="bg-black/50 border-white/10 text-white"
+                              placeholder="50"
+                              type="number"
+                              min="1"
+                              max="100"
+                              value={launchForm.liquidityTokenPercent}
+                              onChange={(e) => setLaunchForm({...launchForm, liquidityTokenPercent: e.target.value})}
+                            />
+                            <span className="text-gray-300 text-sm">%</span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            将使用总供应量的 {launchForm.liquidityTokenPercent}% 用于添加流动性
+                          </p>
+                        </div>
+                        
+                        {/* 配对代币 */}
+                        <div>
+                          <Label className="text-gray-400 text-sm">配对代币</Label>
+                          <select
+                            className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2 text-sm"
+                            value={launchForm.pairTokenSymbol}
+                            onChange={(e) => setLaunchForm({...launchForm, pairTokenSymbol: e.target.value})}
+                          >
+                            <option value="auto">自动选择（推荐）</option>
+                            <option value="SOL">SOL</option>
+                            <option value="USDC">USDC</option>
+                            <option value="USDT">USDT</option>
+                            <option value="ETH">ETH</option>
+                            <option value="WETH">WETH</option>
+                            <option value="BNB">BNB</option>
+                          </select>
+                        </div>
+                        
+                        {/* 配对代币数量 */}
+                        <div>
+                          <Label className="text-gray-400 text-sm">配对代币数量</Label>
+                          <Input
+                            className="mt-1 bg-black/50 border-white/10 text-white"
+                            placeholder="1"
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            value={launchForm.pairTokenAmount}
+                            onChange={(e) => setLaunchForm({...launchForm, pairTokenAmount: e.target.value})}
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            需要投入的配对代币数量（如 1 SOL）
+                          </p>
+                        </div>
+                        
+                        {/* 锁定流动性 */}
+                        <div className="flex items-center justify-between p-3 bg-black/30 rounded-lg">
+                          <div>
+                            <Label className="text-gray-300 text-sm">锁定流动性</Label>
+                            <p className="text-xs text-gray-500 mt-1">
+                              锁定流动性池以增强投资者信心
+                            </p>
+                          </div>
+                          <input
+                            type="checkbox"
+                            checked={launchForm.lockLiquidity}
+                            onChange={(e) => setLaunchForm({...launchForm, lockLiquidity: e.target.checked})}
+                            className="w-5 h-5 rounded border-white/20 bg-black/50 text-purple-600 focus:ring-purple-500"
+                          />
+                        </div>
+                        
+                        {/* 锁定期 */}
+                        {launchForm.lockLiquidity && (
+                          <div>
+                            <Label className="text-gray-400 text-sm">锁定期（天）</Label>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Input
+                                className="bg-black/50 border-white/10 text-white"
+                                placeholder="7"
+                                type="number"
+                                min="1"
+                                max="365"
+                                value={launchForm.lockDuration}
+                                onChange={(e) => setLaunchForm({...launchForm, lockDuration: e.target.value})}
+                              />
+                              <span className="text-gray-300 text-sm">天</span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              流动性将被锁定 {launchForm.lockDuration} 天，期间不可撤回
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  
                   <div className="p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg border border-purple-500/30">
                     <Label className="text-gray-300 font-semibold flex items-center gap-2">
                       <Zap className="h-4 w-4 text-purple-400" />
