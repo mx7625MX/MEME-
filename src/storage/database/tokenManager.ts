@@ -32,28 +32,31 @@ export class TokenManager {
       conditions.push(eq(tokens.isHot, filters.isHot));
     }
 
-    let query = db.select().from(tokens);
+    let results: Token[];
 
     if (conditions.length > 0) {
-      query = query.where(and(...conditions));
+      results = await db.select().from(tokens).where(and(...conditions));
+    } else {
+      results = await db.select().from(tokens);
     }
 
     // Sort by specified field
     switch (sortBy) {
       case "price":
-        query = query.orderBy(desc(tokens.price));
+        results.sort((a, b) => parseFloat(b.price || '0') - parseFloat(a.price || '0'));
         break;
       case "volume24h":
-        query = query.orderBy(desc(tokens.volume24h));
+        results.sort((a, b) => parseFloat(b.volume24h || '0') - parseFloat(a.volume24h || '0'));
         break;
       case "marketCap":
-        query = query.orderBy(desc(tokens.marketCap));
+        results.sort((a, b) => parseFloat(b.marketCap || '0') - parseFloat(a.marketCap || '0'));
         break;
       default:
-        query = query.orderBy(desc(tokens.createdAt));
+        results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     }
 
-    return query.limit(limit).offset(skip);
+    // Apply pagination
+    return results.slice(skip, skip + limit);
   }
 
   async getTokenById(id: string): Promise<Token | null> {

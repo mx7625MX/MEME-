@@ -31,13 +31,17 @@ export class WalletManager {
       conditions.push(eq(wallets.isActive, filters.isActive));
     }
 
-    let query = db.select().from(wallets);
+    let results: Wallet[];
 
     if (conditions.length > 0) {
-      query = query.where(and(...conditions));
+      results = await db.select().from(wallets).where(and(...conditions));
+    } else {
+      results = await db.select().from(wallets);
     }
 
-    return query.limit(limit).offset(skip).orderBy(desc(wallets.createdAt));
+    // Sort and paginate in memory
+    results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return results.slice(skip, skip + limit);
   }
 
   async getWalletById(id: string): Promise<Wallet | null> {

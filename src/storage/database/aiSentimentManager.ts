@@ -38,13 +38,17 @@ export class AiSentimentManager {
       conditions.push(eq(aiSentiments.source, source));
     }
 
-    let query = db.select().from(aiSentiments);
+    let results: AiSentiment[];
 
     if (conditions.length > 0) {
-      query = query.where(and(...conditions));
+      results = await db.select().from(aiSentiments).where(and(...conditions));
+    } else {
+      results = await db.select().from(aiSentiments);
     }
 
-    return query.limit(limit).offset(skip).orderBy(desc(aiSentiments.createdAt));
+    // 在内存中排序和分页
+    results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return results.slice(skip, skip + limit);
   }
 
   async getLatestSentiment(tokenSymbol: string): Promise<AiSentiment | null> {

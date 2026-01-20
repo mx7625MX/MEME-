@@ -42,13 +42,17 @@ export class TransactionManager {
       conditions.push(eq(transactions.status, filters.status));
     }
 
-    let query = db.select().from(transactions);
+    let results: Transaction[];
 
     if (conditions.length > 0) {
-      query = query.where(and(...conditions));
+      results = await db.select().from(transactions).where(and(...conditions));
+    } else {
+      results = await db.select().from(transactions);
     }
 
-    return query.limit(limit).offset(skip).orderBy(desc(transactions.createdAt));
+    // Sort and paginate in memory
+    results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return results.slice(skip, skip + limit);
   }
 
   async getTransactionById(id: string): Promise<Transaction | null> {

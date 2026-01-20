@@ -196,8 +196,8 @@ async function generateSimulatedContent(influencer: any, count: number = 5) {
     let generatedContent: any[] = [];
     try {
       const content = data.choices?.[0]?.message?.content || data.content || '';
-      // 尝试解析JSON
-      const jsonMatch = content.match(/\[.*\]/s);
+      // 尝试解析JSON（不使用 dotAll 模式）
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         generatedContent = JSON.parse(jsonMatch[0]);
       } else {

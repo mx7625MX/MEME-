@@ -10,14 +10,21 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // 验证必填字段
-    const { walletId, chain, tokenName, tokenSymbol, totalSupply, liquidity, imageUrl, imageKey } = body;
-    
+    const { walletId, chain, tokenName, tokenSymbol, totalSupply, liquidity, imageUrl, imageKey, bundleBuyPercent } = body;
+
     if (!walletId || !chain || !tokenName || !tokenSymbol || !totalSupply) {
       return NextResponse.json(
         { success: false, error: '缺少必填字段: walletId, chain, tokenName, tokenSymbol, totalSupply' },
         { status: 400 }
       );
     }
+
+    // 创作者捆绑买入逻辑 - 必须是第一个买家
+    // 默认买入 10% 的供应量，确保创作者是第一个买家
+    const bundleBuyPercentValue = bundleBuyPercent || 10; // 默认 10%
+    const bundleBuyAmount = (parseFloat(totalSupply) * bundleBuyPercentValue / 100).toString();
+    const initialPrice = '0.000001'; // 初始价格
+    const bundleBuyCost = (parseFloat(bundleBuyAmount) * parseFloat(initialPrice)).toString();
 
     // 模拟代币发行逻辑（实际应用中需要调用区块链网络）
     // 这里我们创建一个代币地址和记录
@@ -81,11 +88,36 @@ export async function POST(request: NextRequest) {
       .values(validatedTxData)
       .returning();
 
+    // 创作者捆绑买入交易记录（必须是第一个买家）
+    const bundleBuyTx = {
+      walletId,
+      type: 'buy' as const,
+      chain,
+      tokenAddress: mockTokenAddress,
+      tokenSymbol,
+      amount: bundleBuyAmount,
+      price: initialPrice,
+      fee: (parseFloat(bundleBuyCost) * 0.001).toString(), // 0.1% 交易费
+      status: 'completed' as const,
+      metadata: {
+        bundleBuy: true, // 标记为捆绑买入
+        bundleBuyPercent: bundleBuyPercentValue.toString(),
+        txHash: `0x${Array.from({ length: 64 }, () =>
+          Math.floor(Math.random() * 16).toString(16)
+        ).join('')}`,
+        isFirstBuyer: true, // 标记为第一个买家
+      }
+    };
+
+    const validatedBundleBuyTxData = insertTransactionSchema.parse(bundleBuyTx);
+    const [bundleBuyTransaction] = await db.insert(transactions)
+      .values(validatedBundleBuyTxData)
+      .returning();
+
     // 自动创建持仓记录（创作者模式）
-    // 假设创作者在发币后持有 80% 的代币用于后续监控和卖出
-    const creatorHoldingAmount = (parseFloat(totalSupply) * 0.8).toString();
-    const initialPrice = '0.000001';
-    const buyAmount = (parseFloat(creatorHoldingAmount) * parseFloat(initialPrice)).toString();
+    // 创作者持有剩余的供应量（总供应量 - 捆绑买入数量）
+    const creatorHoldingAmount = (parseFloat(totalSupply) - parseFloat(bundleBuyAmount)).toString();
+    const totalBuyAmount = bundleBuyCost; // 实际投入的资金
 
     const newPortfolio = {
       walletId,
@@ -93,14 +125,14 @@ export async function POST(request: NextRequest) {
       tokenAddress: mockTokenAddress,
       tokenSymbol,
       tokenName,
-      amount: creatorHoldingAmount,
+      amount: creatorHoldingAmount, // 持有剩余的供应量
       buyPrice: initialPrice,
-      buyAmount,
+      buyAmount: totalBuyAmount, // 实际投入的资金
       currentPrice: initialPrice,
       profitTarget: body.profitTarget || '100', // 默认利润目标 100%
       stopLoss: body.stopLoss || '30', // 默认止损 30%
-      totalInvested: buyAmount,
-      totalValue: buyAmount,
+      totalInvested: totalBuyAmount,
+      totalValue: totalBuyAmount,
       profitLoss: '0',
       profitLossPercent: '0',
       status: 'active',
@@ -118,6 +150,10 @@ export async function POST(request: NextRequest) {
       metadata: {
         creatorMode: true,
         launchTxHash: (transaction.metadata as any)?.txHash,
+        bundleBuyTxHash: (bundleBuyTransaction.metadata as any)?.txHash, // 捆绑买入交易哈希
+        bundleBuyPercent: bundleBuyPercentValue.toString(),
+        bundleBuyAmount,
+        isFirstBuyer: true, // 标记为第一个买家
         liquidityPool: `0x${Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`,
       }
     };
@@ -132,8 +168,9 @@ export async function POST(request: NextRequest) {
       data: {
         token,
         transaction,
+        bundleBuyTransaction, // 捆绑买入交易记录
         portfolio,
-        message: '代币发行成功！已自动创建持仓并启用闪电卖出监控'
+        message: `代币发行成功！已自动创建持仓并启用闪电卖出监控。您是第一个买家（买入 ${bundleBuyPercentValue}% 供应量）`
       }
     });
 

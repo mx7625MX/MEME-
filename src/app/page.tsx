@@ -98,7 +98,8 @@ export default function MemeMasterPro() {
     totalSupply: '',
     liquidity: '',
     imageUrl: '',
-    imageKey: ''
+    imageKey: '',
+    bundleBuyPercent: '10' // 默认捆绑买入 10%
   });
   const [isLaunching, setIsLaunching] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -116,18 +117,6 @@ export default function MemeMasterPro() {
   // 持仓管理相关状态
   const [portfolios, setPortfolios] = useState<any[]>([]);
   const [isSyncingPortfolios, setIsSyncingPortfolios] = useState(false);
-  const [addPortfolioForm, setAddPortfolioForm] = useState({
-    walletId: '',
-    tokenAddress: '',
-    tokenSymbol: '',
-    tokenName: '',
-    amount: '',
-    buyPrice: '',
-    buyAmount: '',
-    profitTarget: '',
-    stopLoss: ''
-  });
-  const [isAddingPortfolio, setIsAddingPortfolio] = useState(false);
   const [editingPortfolio, setEditingPortfolio] = useState<string | null>(null);
   
   // 自动闪电卖出相关状态
@@ -501,7 +490,8 @@ export default function MemeMasterPro() {
           totalSupply: '',
           liquidity: '',
           imageUrl: '',
-          imageKey: ''
+          imageKey: '',
+          bundleBuyPercent: '10'
         });
         loadTransactions();
       } else {
@@ -550,48 +540,6 @@ export default function MemeMasterPro() {
       alert('闪电卖出失败');
     } finally {
       setIsSelling(false);
-    }
-  };
-  
-  // 添加持仓
-  const handleAddPortfolio = async () => {
-    if (!addPortfolioForm.walletId || !addPortfolioForm.tokenAddress || !addPortfolioForm.tokenSymbol || 
-        !addPortfolioForm.amount || !addPortfolioForm.buyPrice || !addPortfolioForm.buyAmount) {
-      alert('请填写所有必填字段');
-      return;
-    }
-    
-    try {
-      setIsAddingPortfolio(true);
-      const res = await fetch(`${API_BASE}/portfolios`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(addPortfolioForm)
-      });
-      
-      const data = await res.json();
-      if (data.success) {
-        alert(data.message);
-        setAddPortfolioForm({
-          walletId: '',
-          tokenAddress: '',
-          tokenSymbol: '',
-          tokenName: '',
-          amount: '',
-          buyPrice: '',
-          buyAmount: '',
-          profitTarget: '',
-          stopLoss: ''
-        });
-        loadPortfolios();
-      } else {
-        alert(data.error);
-      }
-    } catch (error) {
-      console.error('Error adding portfolio:', error);
-      alert('添加持仓失败');
-    } finally {
-      setIsAddingPortfolio(false);
     }
   };
   
@@ -2492,6 +2440,30 @@ export default function MemeMasterPro() {
                       onChange={(e) => setLaunchForm({...launchForm, liquidity: e.target.value})}
                     />
                   </div>
+                  <div className="p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg border border-purple-500/30">
+                    <Label className="text-gray-300 font-semibold flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-purple-400" />
+                      创作者捆绑买入（必选）
+                    </Label>
+                    <p className="text-xs text-gray-400 mt-1 mb-2">
+                      作为创作者，您必须是第一个买家。系统将自动在发币后立即买入指定比例的代币。
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <Input
+                        className="bg-black/50 border-white/10 text-white flex-1"
+                        placeholder="10"
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={launchForm.bundleBuyPercent}
+                        onChange={(e) => setLaunchForm({...launchForm, bundleBuyPercent: e.target.value})}
+                      />
+                      <span className="text-gray-300">%</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      推荐值：10-20% • 将自动创建持仓并启用闪电卖出监控
+                    </p>
+                  </div>
                   <Button
                     className="w-full bg-purple-600 hover:bg-purple-700"
                     onClick={handleLaunchToken}
@@ -3193,130 +3165,6 @@ export default function MemeMasterPro() {
               </div>
             )}
 
-            {/* 添加持仓 */}
-            <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Plus className="h-5 w-5 text-green-400" />
-                  添加持仓
-                </CardTitle>
-                <CardDescription className="text-gray-400">
-                  记录您的买入信息，用于跟踪盈亏
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <Label className="text-gray-400">选择钱包 *</Label>
-                    <select
-                      className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2"
-                      value={addPortfolioForm.walletId}
-                      onChange={(e) => setAddPortfolioForm({...addPortfolioForm, walletId: e.target.value})}
-                    >
-                      <option value="">选择钱包</option>
-                      {wallets.map((wallet) => (
-                        <option key={wallet.id} value={wallet.id}>
-                          {wallet.name} ({wallet.chain.toUpperCase()})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <Label className="text-gray-400">代币符号 *</Label>
-                    <Input
-                      className="mt-1 bg-black/50 border-white/10 text-white"
-                      placeholder="PEPE"
-                      value={addPortfolioForm.tokenSymbol}
-                      onChange={(e) => setAddPortfolioForm({...addPortfolioForm, tokenSymbol: e.target.value.toUpperCase()})}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-gray-400">代币名称</Label>
-                    <Input
-                      className="mt-1 bg-black/50 border-white/10 text-white"
-                      placeholder="Pepe Coin"
-                      value={addPortfolioForm.tokenName}
-                      onChange={(e) => setAddPortfolioForm({...addPortfolioForm, tokenName: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-gray-400">代币地址 *</Label>
-                    <Input
-                      className="mt-1 bg-black/50 border-white/10 text-white"
-                      placeholder="0x..."
-                      value={addPortfolioForm.tokenAddress}
-                      onChange={(e) => setAddPortfolioForm({...addPortfolioForm, tokenAddress: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-gray-400">买入数量 *</Label>
-                    <Input
-                      className="mt-1 bg-black/50 border-white/10 text-white"
-                      placeholder="1000"
-                      type="number"
-                      value={addPortfolioForm.amount}
-                      onChange={(e) => setAddPortfolioForm({...addPortfolioForm, amount: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-gray-400">买入价格 (USD) *</Label>
-                    <Input
-                      className="mt-1 bg-black/50 border-white/10 text-white"
-                      placeholder="0.000001"
-                      type="number"
-                      step="0.000001"
-                      value={addPortfolioForm.buyPrice}
-                      onChange={(e) => setAddPortfolioForm({...addPortfolioForm, buyPrice: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-gray-400">买入金额 (原生代币) *</Label>
-                    <Input
-                      className="mt-1 bg-black/50 border-white/10 text-white"
-                      placeholder="0.1"
-                      type="number"
-                      step="0.001"
-                      value={addPortfolioForm.buyAmount}
-                      onChange={(e) => setAddPortfolioForm({...addPortfolioForm, buyAmount: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-gray-400">利润目标 (%)</Label>
-                    <Input
-                      className="mt-1 bg-black/50 border-white/10 text-white"
-                      placeholder="50"
-                      type="number"
-                      value={addPortfolioForm.profitTarget}
-                      onChange={(e) => setAddPortfolioForm({...addPortfolioForm, profitTarget: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-gray-400">止损 (%)</Label>
-                    <Input
-                      className="mt-1 bg-black/50 border-white/10 text-white"
-                      placeholder="10"
-                      type="number"
-                      value={addPortfolioForm.stopLoss}
-                      onChange={(e) => setAddPortfolioForm({...addPortfolioForm, stopLoss: e.target.value})}
-                    />
-                  </div>
-                </div>
-                <Button
-                  className="w-full mt-4 bg-green-600 hover:bg-green-700"
-                  onClick={handleAddPortfolio}
-                  disabled={isAddingPortfolio}
-                >
-                  {isAddingPortfolio ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      添加中...
-                    </>
-                  ) : (
-                    '添加持仓'
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* 大V分析结果弹窗 */}

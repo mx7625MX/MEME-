@@ -1,4 +1,4 @@
-import { eq, SQL, desc, sql } from "drizzle-orm";
+import { eq, and, SQL, desc, sql } from "drizzle-orm";
 import { getDb } from "coze-coding-dev-sdk";
 import {
   marketData,
@@ -20,7 +20,7 @@ export class MarketDataManager {
     data: InsertMarketData
   ): Promise<MarketData> {
     const db = await getDb();
-    const validated = insertMarketDataSchema.parse({ tokenSymbol, ...data });
+    const validated = insertMarketDataSchema.parse({ ...data, tokenSymbol });
 
     const [existing] = await db
       .select()
@@ -58,13 +58,21 @@ export class MarketDataManager {
       conditions.push(eq(marketData.isHot, isHot));
     }
 
-    let query = db.select().from(marketData);
+    let results: MarketData[];
 
     if (conditions.length > 0) {
-      query = query.where(and(...conditions));
+      results = await db.select().from(marketData).where(and(...conditions));
+    } else {
+      results = await db.select().from(marketData);
     }
 
-    return query.limit(limit).offset(skip).orderBy(desc(marketData.updatedAt));
+    // 在内存中排序和分页
+    results.sort((a, b) => {
+      const aTime = a.updatedAt?.getTime() || 0;
+      const bTime = b.updatedAt?.getTime() || 0;
+      return bTime - aTime;
+    });
+    return results.slice(skip, skip + limit);
   }
 
   async getMarketDataBySymbol(tokenSymbol: string): Promise<MarketData | null> {
