@@ -29,7 +29,8 @@ import {
   CheckCircle,
   Search,
   Filter,
-  Copy
+  Copy,
+  Trash2
 } from 'lucide-react';
 
 import { INFLUENCERS, Influencer, INFLUENCERS_BY_CATEGORY, searchInfluencers } from '@/config/influencers';
@@ -265,6 +266,42 @@ export default function MemeMasterPro() {
       console.error('Error creating wallet:', error);
     } finally {
       setIsCreatingWallet('');
+    }
+  };
+
+  // 删除钱包
+  const handleDeleteWallet = async (walletId: string) => {
+    // 确认删除
+    const confirmed = confirm('确定要删除这个钱包吗？删除后无法恢复。');
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/wallets/${walletId}`, {
+        method: 'DELETE'
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        alert('钱包删除成功');
+        loadWallets();
+        loadStats();
+      } else {
+        alert(data.error || '删除失败');
+      }
+    } catch (error) {
+      console.error('Error deleting wallet:', error);
+      alert('删除失败');
+    }
+  };
+
+  // 复制钱包地址
+  const handleCopyAddress = async (address: string) => {
+    try {
+      await navigator.clipboard.writeText(address);
+      alert('地址已复制到剪贴板');
+    } catch (error) {
+      console.error('Error copying address:', error);
+      alert('复制失败');
     }
   };
 
@@ -1060,26 +1097,50 @@ export default function MemeMasterPro() {
                   {wallets.length === 0 ? (
                     <p className="text-gray-500 text-center py-8">暂无钱包，请创建新钱包</p>
                   ) : (
-                    wallets.map((wallet) => (
-                      <div key={wallet.id} className="flex items-center justify-between rounded-lg bg-black/30 p-4 border border-white/10">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-white font-medium">{wallet.name}</span>
-                            <Badge variant={wallet.isActive ? 'default' : 'secondary'}>
-                              {wallet.chain.toUpperCase()}
-                            </Badge>
-                            {wallet.isActive && (
-                              <Badge className="bg-green-600">活跃</Badge>
-                            )}
+                    <div className="space-y-3">
+                      {wallets.map((wallet) => (
+                        <div key={wallet.id} className="flex items-center justify-between rounded-lg bg-black/30 p-4 border border-white/10">
+                          <div className="space-y-1 flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-white font-medium">{wallet.name}</span>
+                              <Badge variant={wallet.isActive ? 'default' : 'secondary'}>
+                                {wallet.chain.toUpperCase()}
+                              </Badge>
+                              {wallet.isActive && (
+                                <Badge className="bg-green-600">活跃</Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-400 truncate">{wallet.address}</p>
                           </div>
-                          <p className="text-sm text-gray-400">{wallet.address}</p>
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <p className="text-lg font-bold text-white">{wallet.balance}</p>
+                              <p className="text-xs text-gray-500">余额</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-gray-400 hover:text-white h-8 w-8"
+                                onClick={() => handleCopyAddress(wallet.address)}
+                                title="复制地址"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-red-400 hover:text-red-300 h-8 w-8"
+                                onClick={() => handleDeleteWallet(wallet.id)}
+                                title="删除钱包"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-lg font-bold text-white">{wallet.balance}</p>
-                          <p className="text-xs text-gray-500">余额</p>
-                        </div>
-                      </div>
-                    ))
+                      ))}
+                    </div>
                   )}
                 </div>
               </CardContent>
