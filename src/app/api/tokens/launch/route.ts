@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from 'coze-coding-dev-sdk';
-import { transactions, tokens } from '@/storage/database/shared/schema';
-import { insertTransactionSchema, insertTokenSchema } from '@/storage/database/shared/schema';
+import { transactions, tokens, portfolios } from '@/storage/database/shared/schema';
+import { insertTransactionSchema, insertTokenSchema, insertPortfolioSchema } from '@/storage/database/shared/schema';
+import { eq } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
   try {
@@ -80,12 +81,54 @@ export async function POST(request: NextRequest) {
       .values(validatedTxData)
       .returning();
 
+    // 自动创建持仓记录（创作者模式）
+    // 假设创作者在发币后持有 80% 的代币用于后续监控和卖出
+    const creatorHoldingAmount = (parseFloat(totalSupply) * 0.8).toString();
+    const initialPrice = '0.000001';
+    const buyAmount = (parseFloat(creatorHoldingAmount) * parseFloat(initialPrice)).toString();
+
+    const newPortfolio = {
+      walletId,
+      chain,
+      tokenAddress: mockTokenAddress,
+      tokenSymbol,
+      tokenName,
+      amount: creatorHoldingAmount,
+      buyPrice: initialPrice,
+      buyAmount,
+      currentPrice: initialPrice,
+      profitTarget: body.profitTarget || '100', // 默认利润目标 100%
+      stopLoss: body.stopLoss || '30', // 默认止损 30%
+      totalInvested: buyAmount,
+      totalValue: buyAmount,
+      profitLoss: '0',
+      profitLossPercent: '0',
+      status: 'active',
+      // 启用自动闪电卖出
+      autoSellEnabled: body.autoSellEnabled !== false, // 默认启用
+      autoSellType: body.autoSellType || 'both', // 默认同时监测利润和大额买入
+      whaleBuyThreshold: body.whaleBuyThreshold || '0.5', // 默认大额买入阈值 0.5 ETH/SOL
+      autoSellPercentage: body.autoSellPercentage || '100', // 默认全部卖出
+      autoSellStatus: 'idle',
+      metadata: {
+        creatorMode: true,
+        launchTxHash: (transaction.metadata as any)?.txHash,
+        liquidityPool: `0x${Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`,
+      }
+    };
+
+    const validatedPortfolioData = insertPortfolioSchema.parse(newPortfolio);
+    const [portfolio] = await db.insert(portfolios)
+      .values(validatedPortfolioData)
+      .returning();
+
     return NextResponse.json({
       success: true,
       data: {
         token,
         transaction,
-        message: '代币发行成功！'
+        portfolio,
+        message: '代币发行成功！已自动创建持仓并启用闪电卖出监控'
       }
     });
 

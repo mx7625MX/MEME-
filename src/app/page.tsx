@@ -130,6 +130,20 @@ export default function MemeMasterPro() {
   const [isAddingPortfolio, setIsAddingPortfolio] = useState(false);
   const [editingPortfolio, setEditingPortfolio] = useState<string | null>(null);
   
+  // 自动闪电卖出相关状态
+  const [showAutoSellConfig, setShowAutoSellConfig] = useState<string | null>(null);
+  const [autoSellForm, setAutoSellForm] = useState({
+    autoSellEnabled: false,
+    autoSellType: 'both',
+    whaleBuyThreshold: '0.5',
+    autoSellPercentage: '100',
+    profitTarget: '100',
+    stopLoss: '30'
+  });
+  const [isUpdatingAutoSell, setIsUpdatingAutoSell] = useState(false);
+  const [isMonitoring, setIsMonitoring] = useState(false);
+  const [monitorResults, setMonitorResults] = useState<any>(null);
+  
   // 转账相关状态
   const [transferForm, setTransferForm] = useState({
     walletId: '',
@@ -648,6 +662,77 @@ export default function MemeMasterPro() {
       alert('同步持仓失败');
     } finally {
       setIsSyncingPortfolios(false);
+    }
+  };
+  
+  // 打开自动闪电卖出配置
+  const openAutoSellConfig = (portfolio: any) => {
+    setShowAutoSellConfig(portfolio.id);
+    setAutoSellForm({
+      autoSellEnabled: portfolio.autoSellEnabled || false,
+      autoSellType: portfolio.autoSellType || 'both',
+      whaleBuyThreshold: portfolio.whaleBuyThreshold || '0.5',
+      autoSellPercentage: portfolio.autoSellPercentage || '100',
+      profitTarget: portfolio.profitTarget || '100',
+      stopLoss: portfolio.stopLoss || '30'
+    });
+  };
+  
+  // 更新自动闪电卖出配置
+  const handleUpdateAutoSellConfig = async (portfolioId: string) => {
+    try {
+      setIsUpdatingAutoSell(true);
+      const res = await fetch(`${API_BASE}/portfolios/${portfolioId}/auto-sell`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(autoSellForm)
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        alert('自动闪电卖出配置已更新');
+        setShowAutoSellConfig(null);
+        loadPortfolios();
+      } else {
+        alert(data.error || '更新失败');
+      }
+    } catch (error) {
+      console.error('Error updating auto-sell config:', error);
+      alert('更新失败');
+    } finally {
+      setIsUpdatingAutoSell(false);
+    }
+  };
+  
+  // 手动触发监控
+  const handleMonitorPortfolios = async (portfolioId?: string) => {
+    try {
+      setIsMonitoring(true);
+      const res = await fetch(`${API_BASE}/portfolios/monitor`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(portfolioId ? { portfolioId } : {})
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        setMonitorResults(data.data);
+        loadPortfolios();
+        
+        const autoSoldCount = data.data.autoSold;
+        if (autoSoldCount > 0) {
+          alert(`监控完成！触发了 ${autoSoldCount} 笔自动卖出`);
+        } else {
+          alert(`监控完成！监控了 ${data.data.monitored} 个持仓，未触发自动卖出`);
+        }
+      } else {
+        alert(data.error || '监控失败');
+      }
+    } catch (error) {
+      console.error('Error monitoring portfolios:', error);
+      alert('监控失败');
+    } finally {
+      setIsMonitoring(false);
     }
   };
   
@@ -2649,6 +2734,43 @@ export default function MemeMasterPro() {
                                 <span className="text-xs text-gray-500">%</span>
                               </div>
                             </div>
+
+                            {/* 自动闪电卖出状态 */}
+                            <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                              <div className="flex items-center gap-2">
+                                {portfolio.autoSellEnabled ? (
+                                  <Badge className="bg-green-600">
+                                    <Zap className="mr-1 h-3 w-3" />
+                                    自动闪电卖出已启用
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="secondary">
+                                    自动闪电卖出未启用
+                                  </Badge>
+                                )}
+                                {portfolio.autoSellEnabled && portfolio.autoSellType && (
+                                  <Badge variant="outline" className="border-purple-500/50 text-purple-400 text-xs">
+                                    {portfolio.autoSellType === 'profit' ? '利润触发' :
+                                     portfolio.autoSellType === 'whale' ? '大额买入触发' : '利润+大额买入'}
+                                  </Badge>
+                                )}
+                                {portfolio.autoSellStatus === 'triggered' && (
+                                  <Badge className="bg-yellow-600 animate-pulse">执行中...</Badge>
+                                )}
+                                {portfolio.autoSellStatus === 'completed' && (
+                                  <Badge className="bg-blue-600">已完成</Badge>
+                                )}
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => openAutoSellConfig(portfolio)}
+                                className="text-purple-400 hover:text-purple-300 h-7"
+                              >
+                                <Settings className="mr-1 h-3 w-3" />
+                                配置
+                              </Button>
+                            </div>
                           </div>
 
                           <div className="flex flex-col gap-2">
@@ -2682,6 +2804,202 @@ export default function MemeMasterPro() {
                 )}
               </CardContent>
             </Card>
+
+            {/* 自动闪电卖出监控按钮 */}
+            <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-blue-400" />
+                  自动闪电卖出监控
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  手动触发监控，检查是否满足自动卖出条件
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-4">
+                  <Button
+                    onClick={() => handleMonitorPortfolios()}
+                    disabled={isMonitoring}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    {isMonitoring ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        监控中...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="mr-2 h-4 w-4" />
+                        手动触发监控
+                      </>
+                    )}
+                  </Button>
+                  <span className="text-sm text-gray-400">
+                    自动检查所有启用了闪电卖出的持仓，当达到利润目标或检测到大额买入时自动卖出
+                  </span>
+                </div>
+                {monitorResults && (
+                  <div className="mt-4 p-4 bg-black/30 rounded-lg border border-white/10">
+                    <p className="text-white font-medium mb-2">监控结果:</p>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-500">监控持仓数</p>
+                        <p className="text-white">{monitorResults.monitored}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">触发卖出数</p>
+                        <p className="text-green-400">{monitorResults.autoSold}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 自动闪电卖出配置弹窗 */}
+            {showAutoSellConfig && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.9)" }}>
+                <Card className="bg-black/90 border-white/20 backdrop-blur-sm max-w-2xl w-full max-h-[90vh] overflow-hidden">
+                  <CardHeader className="border-b border-white/10">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-white flex items-center gap-2">
+                          <Zap className="h-5 w-5 text-yellow-400" />
+                          配置自动闪电卖出
+                        </CardTitle>
+                        <CardDescription className="text-gray-400">
+                          设置自动触发的条件和参数
+                        </CardDescription>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-gray-400 hover:text-white"
+                        onClick={() => setShowAutoSellConfig(null)}
+                      >
+                        <Send className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4 overflow-y-auto p-6">
+                    <div className="flex items-center gap-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                      <Label className="text-gray-300 cursor-pointer" htmlFor="autoSellEnabled">
+                        启用自动闪电卖出
+                      </Label>
+                      <input
+                        id="autoSellEnabled"
+                        type="checkbox"
+                        checked={autoSellForm.autoSellEnabled}
+                        onChange={(e) => setAutoSellForm({...autoSellForm, autoSellEnabled: e.target.checked})}
+                        className="w-5 h-5 rounded"
+                      />
+                      <span className="text-xs text-gray-500">
+                        开启后将根据条件自动执行闪电卖出
+                      </span>
+                    </div>
+
+                    <div>
+                      <Label className="text-gray-400 mb-2 block">触发类型</Label>
+                      <div className="grid grid-cols-3 gap-3">
+                        <Button
+                          variant={autoSellForm.autoSellType === 'profit' ? 'default' : 'outline'}
+                          onClick={() => setAutoSellForm({...autoSellForm, autoSellType: 'profit'})}
+                          className={autoSellForm.autoSellType === 'profit' ? 'bg-green-600' : ''}
+                        >
+                          利润触发
+                        </Button>
+                        <Button
+                          variant={autoSellForm.autoSellType === 'whale' ? 'default' : 'outline'}
+                          onClick={() => setAutoSellForm({...autoSellForm, autoSellType: 'whale'})}
+                          className={autoSellForm.autoSellType === 'whale' ? 'bg-blue-600' : ''}
+                        >
+                          大额买入触发
+                        </Button>
+                        <Button
+                          variant={autoSellForm.autoSellType === 'both' ? 'default' : 'outline'}
+                          onClick={() => setAutoSellForm({...autoSellForm, autoSellType: 'both'})}
+                          className={autoSellForm.autoSellType === 'both' ? 'bg-purple-600' : ''}
+                        >
+                          两者都触发
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-gray-400 mb-2 block">利润目标 (%)</Label>
+                        <Input
+                          type="number"
+                          placeholder="100"
+                          value={autoSellForm.profitTarget}
+                          onChange={(e) => setAutoSellForm({...autoSellForm, profitTarget: e.target.value})}
+                          className="bg-black/50 border-white/10 text-white"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-gray-400 mb-2 block">止损 (%)</Label>
+                        <Input
+                          type="number"
+                          placeholder="30"
+                          value={autoSellForm.stopLoss}
+                          onChange={(e) => setAutoSellForm({...autoSellForm, stopLoss: e.target.value})}
+                          className="bg-black/50 border-white/10 text-white"
+                        />
+                      </div>
+                    </div>
+
+                    {autoSellForm.autoSellType === 'whale' || autoSellForm.autoSellType === 'both' ? (
+                      <div>
+                        <Label className="text-gray-400 mb-2 block">大额买入阈值 (原生代币)</Label>
+                        <Input
+                          type="number"
+                          placeholder="0.5"
+                          step="0.1"
+                          value={autoSellForm.whaleBuyThreshold}
+                          onChange={(e) => setAutoSellForm({...autoSellForm, whaleBuyThreshold: e.target.value})}
+                          className="bg-black/50 border-white/10 text-white"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          当检测到单笔买入超过此金额时自动卖出（如 0.5 ETH/SOL）
+                        </p>
+                      </div>
+                    ) : null}
+
+                    <div>
+                      <Label className="text-gray-400 mb-2 block">自动卖出比例 (%)</Label>
+                      <Input
+                        type="number"
+                        placeholder="100"
+                        min="0"
+                        max="100"
+                        value={autoSellForm.autoSellPercentage}
+                        onChange={(e) => setAutoSellForm({...autoSellForm, autoSellPercentage: e.target.value})}
+                        className="bg-black/50 border-white/10 text-white"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        触发自动卖出时，卖出持仓的百分比（100% 表示全部卖出）
+                      </p>
+                    </div>
+
+                    <Button
+                      className="w-full bg-green-600 hover:bg-green-700"
+                      onClick={() => handleUpdateAutoSellConfig(showAutoSellConfig)}
+                      disabled={isUpdatingAutoSell}
+                    >
+                      {isUpdatingAutoSell ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          保存中...
+                        </>
+                      ) : (
+                        '保存配置'
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             {/* 添加持仓 */}
             <Card className="bg-black/20 border-white/10 backdrop-blur-sm">

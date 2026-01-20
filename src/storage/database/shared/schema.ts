@@ -222,6 +222,15 @@ export const portfolios = pgTable(
     profitLoss: decimal("profit_loss", { precision: 30, scale: 18 }), // 盈亏金额
     profitLossPercent: decimal("profit_loss_percent", { precision: 10, scale: 2 }), // 盈亏百分比
     status: varchar("status", { length: 20 }).notNull().default("active"), // active, sold, closed
+    
+    // 自动闪电卖出配置
+    autoSellEnabled: boolean("auto_sell_enabled").default(false), // 是否启用自动闪电卖出
+    autoSellType: varchar("auto_sell_type", { length: 20 }), // profit, whale, both
+    whaleBuyThreshold: decimal("whale_buy_threshold", { precision: 30, scale: 18 }), // 大额买入阈值
+    autoSellPercentage: decimal("auto_sell_percentage", { precision: 5, scale: 2 }).default("100"), // 自动卖出比例（0-100）
+    autoSellStatus: varchar("auto_sell_status", { length: 20 }).default("idle"), // idle, triggered, completed
+    lastAutoSellAt: timestamp("last_auto_sell_at", { withTimezone: true }), // 最后一次自动卖出时间
+    
     metadata: jsonb("metadata"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -234,6 +243,7 @@ export const portfolios = pgTable(
     chainIdx: index("portfolios_chain_idx").on(table.chain),
     tokenIdx: index("portfolios_token_idx").on(table.tokenAddress),
     statusIdx: index("portfolios_status_idx").on(table.status),
+    autoSellEnabledIdx: index("portfolios_auto_sell_enabled_idx").on(table.autoSellEnabled),
   })
 );
 
@@ -412,6 +422,11 @@ export const insertPortfolioSchema = createCoercedInsertSchema(portfolios).pick(
   profitLoss: true,
   profitLossPercent: true,
   status: true,
+  autoSellEnabled: true,
+  autoSellType: true,
+  whaleBuyThreshold: true,
+  autoSellPercentage: true,
+  autoSellStatus: true,
   metadata: true,
 });
 
@@ -425,6 +440,11 @@ export const updatePortfolioSchema = createCoercedInsertSchema(portfolios)
     profitLoss: true,
     profitLossPercent: true,
     status: true,
+    autoSellEnabled: true,
+    autoSellType: true,
+    whaleBuyThreshold: true,
+    autoSellPercentage: true,
+    autoSellStatus: true,
     metadata: true,
   })
   .partial();
