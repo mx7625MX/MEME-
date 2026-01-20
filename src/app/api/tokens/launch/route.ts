@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // 验证必填字段
-    const { walletId, chain, tokenName, tokenSymbol, totalSupply, liquidity } = body;
+    const { walletId, chain, tokenName, tokenSymbol, totalSupply, liquidity, imageUrl, imageKey } = body;
     
     if (!walletId || !chain || !tokenName || !tokenSymbol || !totalSupply) {
       return NextResponse.json(
@@ -25,6 +25,17 @@ export async function POST(request: NextRequest) {
     ).join('')}`;
     
     // 创建代币记录
+    const tokenMetadata: any = {
+      creator: walletId,
+      description: `${tokenName} (${tokenSymbol}) - Launch via Meme Master Pro`,
+    };
+    
+    // 如果有图片信息，添加到 metadata 中
+    if (imageUrl && imageKey) {
+      tokenMetadata.imageUrl = imageUrl;
+      tokenMetadata.imageKey = imageKey;
+    }
+    
     const newToken = {
       chain,
       address: mockTokenAddress,
@@ -35,10 +46,7 @@ export async function POST(request: NextRequest) {
       liquidity: liquidity ? liquidity.toString() : '0',
       price: '0.000001',
       isHot: false,
-      metadata: {
-        creator: walletId,
-        description: `${tokenName} (${tokenSymbol}) - Launch via Meme Master Pro`,
-      }
+      metadata: tokenMetadata
     };
 
     const validatedTokenData = insertTokenSchema.parse(newToken);

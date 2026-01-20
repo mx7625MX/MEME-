@@ -94,9 +94,12 @@ export default function MemeMasterPro() {
     tokenName: '',
     tokenSymbol: '',
     totalSupply: '',
-    liquidity: ''
+    liquidity: '',
+    imageUrl: '',
+    imageKey: ''
   });
   const [isLaunching, setIsLaunching] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   
   // 闪电卖出相关状态
   const [sellForm, setSellForm] = useState({
@@ -297,6 +300,53 @@ export default function MemeMasterPro() {
     }
   };
   
+  // 上传代币图片
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // 验证文件类型
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('仅支持 JPG、PNG、GIF、WebP 格式的图片');
+      return;
+    }
+    
+    // 验证文件大小 (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('图片大小不能超过 5MB');
+      return;
+    }
+    
+    try {
+      setIsUploadingImage(true);
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await fetch(`${API_BASE}/upload/token-image`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        setLaunchForm({
+          ...launchForm,
+          imageUrl: data.data.imageUrl,
+          imageKey: data.data.key
+        });
+      } else {
+        alert(data.error || '图片上传失败');
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('图片上传失败');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+  
   // 使用发现结果一键发币
   const handleLaunchFromDiscovery = async (suggestion: any) => {
     if (!launchForm.walletId) {
@@ -338,7 +388,9 @@ export default function MemeMasterPro() {
           tokenName: '',
           tokenSymbol: '',
           totalSupply: '',
-          liquidity: ''
+          liquidity: '',
+          imageUrl: '',
+          imageKey: ''
         });
         loadTransactions();
       } else {
@@ -1984,6 +2036,53 @@ export default function MemeMasterPro() {
                       value={launchForm.totalSupply}
                       onChange={(e) => setLaunchForm({...launchForm, totalSupply: e.target.value})}
                     />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">代币图片 (可选)</Label>
+                    <div className="mt-1 space-y-2">
+                      {launchForm.imageUrl ? (
+                        <div className="relative w-32 h-32 rounded-lg overflow-hidden border border-white/20">
+                          <img 
+                            src={launchForm.imageUrl} 
+                            alt="Token preview" 
+                            className="w-full h-full object-cover"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            className="absolute top-2 right-2 h-6 w-6 p-0"
+                            onClick={() => setLaunchForm({...launchForm, imageUrl: '', imageKey: ''})}
+                          >
+                            ×
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <input
+                            type="file"
+                            id="token-image"
+                            accept="image/jpeg,image/png,image/gif,image/webp"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                          />
+                          <label
+                            htmlFor="token-image"
+                            className="flex items-center justify-center w-32 h-32 rounded-lg border-2 border-dashed border-white/20 cursor-pointer hover:border-purple-500/50 transition-colors bg-black/30"
+                          >
+                            {isUploadingImage ? (
+                              <Loader2 className="h-8 w-8 text-purple-400 animate-spin" />
+                            ) : (
+                              <div className="text-center">
+                                <Rocket className="h-6 w-6 text-gray-400 mx-auto mb-1" />
+                                <span className="text-xs text-gray-500">上传图片</span>
+                              </div>
+                            )}
+                          </label>
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-500">支持 JPG、PNG、GIF、WebP，最大 5MB</p>
+                    </div>
                   </div>
                   <div>
                     <Label className="text-gray-400">初始流动性 (可选)</Label>
