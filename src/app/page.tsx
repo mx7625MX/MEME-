@@ -30,7 +30,8 @@ import {
   Search,
   Filter,
   Copy,
-  Trash2
+  Trash2,
+  Plus
 } from 'lucide-react';
 
 import { INFLUENCERS, Influencer, INFLUENCERS_BY_CATEGORY, searchInfluencers } from '@/config/influencers';
@@ -112,6 +113,22 @@ export default function MemeMasterPro() {
   });
   const [isSelling, setIsSelling] = useState(false);
   
+  // 持仓管理相关状态
+  const [portfolios, setPortfolios] = useState<any[]>([]);
+  const [addPortfolioForm, setAddPortfolioForm] = useState({
+    walletId: '',
+    tokenAddress: '',
+    tokenSymbol: '',
+    tokenName: '',
+    amount: '',
+    buyPrice: '',
+    buyAmount: '',
+    profitTarget: '',
+    stopLoss: ''
+  });
+  const [isAddingPortfolio, setIsAddingPortfolio] = useState(false);
+  const [editingPortfolio, setEditingPortfolio] = useState<string | null>(null);
+  
   // 转账相关状态
   const [transferForm, setTransferForm] = useState({
     walletId: '',
@@ -179,7 +196,8 @@ export default function MemeMasterPro() {
         loadMarketData(),
         loadStats(),
         loadTransactions(),
-        loadAutoTrades()
+        loadAutoTrades(),
+        loadPortfolios()
       ]);
     } catch (error) {
       console.error('Error initializing data:', error);
@@ -245,6 +263,18 @@ export default function MemeMasterPro() {
       }
     } catch (error) {
       console.error('Error loading auto trades:', error);
+    }
+  };
+  
+  const loadPortfolios = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/portfolios`);
+      const data = await res.json();
+      if (data.success) {
+        setPortfolios(data.data);
+      }
+    } catch (error) {
+      console.error('Error loading portfolios:', error);
     }
   };
 
@@ -497,6 +527,98 @@ export default function MemeMasterPro() {
       alert('闪电卖出失败');
     } finally {
       setIsSelling(false);
+    }
+  };
+  
+  // 添加持仓
+  const handleAddPortfolio = async () => {
+    if (!addPortfolioForm.walletId || !addPortfolioForm.tokenAddress || !addPortfolioForm.tokenSymbol || 
+        !addPortfolioForm.amount || !addPortfolioForm.buyPrice || !addPortfolioForm.buyAmount) {
+      alert('请填写所有必填字段');
+      return;
+    }
+    
+    try {
+      setIsAddingPortfolio(true);
+      const res = await fetch(`${API_BASE}/portfolios`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(addPortfolioForm)
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        setAddPortfolioForm({
+          walletId: '',
+          tokenAddress: '',
+          tokenSymbol: '',
+          tokenName: '',
+          amount: '',
+          buyPrice: '',
+          buyAmount: '',
+          profitTarget: '',
+          stopLoss: ''
+        });
+        loadPortfolios();
+      } else {
+        alert(data.error);
+      }
+    } catch (error) {
+      console.error('Error adding portfolio:', error);
+      alert('添加持仓失败');
+    } finally {
+      setIsAddingPortfolio(false);
+    }
+  };
+  
+  // 快速卖出持仓
+  const handleSellPortfolio = async (portfolioId: string, sellAmount?: string) => {
+    if (!confirm('确定要卖出这个持仓吗？')) return;
+    
+    try {
+      const res = await fetch(`${API_BASE}/portfolios/${portfolioId}/sell`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          sellAmount: sellAmount || null,
+          slippage: 5
+        })
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        alert(data.data.message);
+        loadPortfolios();
+        loadTransactions();
+        loadWallets();
+      } else {
+        alert(data.error);
+      }
+    } catch (error) {
+      console.error('Error selling portfolio:', error);
+      alert('卖出失败');
+    }
+  };
+  
+  // 更新持仓（设置利润目标等）
+  const handleUpdatePortfolio = async (portfolioId: string, updates: any) => {
+    try {
+      const res = await fetch(`${API_BASE}/portfolios/${portfolioId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        loadPortfolios();
+      } else {
+        alert(data.error);
+      }
+    } catch (error) {
+      console.error('Error updating portfolio:', error);
+      alert('更新失败');
     }
   };
   
@@ -2396,21 +2518,139 @@ export default function MemeMasterPro() {
           
           {/* 闪电卖出 */}
           <TabsContent value="trading" className="space-y-4">
+            {/* 持仓列表 */}
             <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="text-white">闪电卖出</CardTitle>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-blue-400" />
+                  我的持仓
+                </CardTitle>
                 <CardDescription className="text-gray-400">
-                  快速卖出代币，无需等待
+                  管理您的代币持仓，设置利润目标和止损
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                {portfolios.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">
+                    暂无持仓，请先添加持仓
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {portfolios.map((portfolio) => (
+                      <div key={portfolio.id} className="p-4 bg-black/30 rounded-lg border border-white/10 hover:border-purple-500/50 transition-colors">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-white font-semibold">{portfolio.tokenSymbol}</h3>
+                              <Badge variant="outline" className="border-purple-500/50 text-purple-400">
+                                {portfolio.chain.toUpperCase()}
+                              </Badge>
+                              {portfolio.tokenName && (
+                                <span className="text-sm text-gray-400">{portfolio.tokenName}</span>
+                              )}
+                            </div>
+                            
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                              <div>
+                                <p className="text-gray-500">持有数量</p>
+                                <p className="text-white font-medium">{parseFloat(portfolio.amount).toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">买入价格</p>
+                                <p className="text-white font-medium">${parseFloat(portfolio.buyPrice).toFixed(6)}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">当前价格</p>
+                                <p className="text-white font-medium">${portfolio.currentPrice ? parseFloat(portfolio.currentPrice).toFixed(6) : '-'}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">盈亏</p>
+                                <p className={`font-medium ${
+                                  parseFloat(portfolio.profitLossPercent || 0) >= 0 ? 'text-green-400' : 'text-red-400'
+                                }`}>
+                                  {portfolio.profitLossPercent ? `${parseFloat(portfolio.profitLossPercent).toFixed(2)}%` : '-'}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* 利润目标和止损设置 */}
+                            <div className="flex items-center gap-4 pt-2 border-t border-white/10">
+                              <div className="flex items-center gap-2">
+                                <Label className="text-xs text-gray-500">利润目标:</Label>
+                                <Input
+                                  type="number"
+                                  className="w-20 h-8 bg-black/50 border-white/10 text-white text-xs"
+                                  placeholder="50"
+                                  value={portfolio.profitTarget || ''}
+                                  onChange={(e) => handleUpdatePortfolio(portfolio.id, { profitTarget: parseFloat(e.target.value) })}
+                                />
+                                <span className="text-xs text-gray-500">%</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Label className="text-xs text-gray-500">止损:</Label>
+                                <Input
+                                  type="number"
+                                  className="w-20 h-8 bg-black/50 border-white/10 text-white text-xs"
+                                  placeholder="10"
+                                  value={portfolio.stopLoss || ''}
+                                  onChange={(e) => handleUpdatePortfolio(portfolio.id, { stopLoss: parseFloat(e.target.value) })}
+                                />
+                                <span className="text-xs text-gray-500">%</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col gap-2">
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleSellPortfolio(portfolio.id)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              <Zap className="mr-1 h-4 w-4" />
+                              全部卖出
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const sellAmount = prompt('输入卖出数量 (留空卖出全部):');
+                                if (sellAmount) {
+                                  handleSellPortfolio(portfolio.id, sellAmount);
+                                }
+                              }}
+                              className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+                            >
+                              部分卖出
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 添加持仓 */}
+            <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Plus className="h-5 w-5 text-green-400" />
+                  添加持仓
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  记录您的买入信息，用于跟踪盈亏
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <Label className="text-gray-400">选择钱包</Label>
+                    <Label className="text-gray-400">选择钱包 *</Label>
                     <select
                       className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2"
-                      value={sellForm.walletId}
-                      onChange={(e) => setSellForm({...sellForm, walletId: e.target.value})}
+                      value={addPortfolioForm.walletId}
+                      onChange={(e) => setAddPortfolioForm({...addPortfolioForm, walletId: e.target.value})}
                     >
                       <option value="">选择钱包</option>
                       {wallets.map((wallet) => (
@@ -2421,70 +2661,99 @@ export default function MemeMasterPro() {
                     </select>
                   </div>
                   <div>
-                    <Label className="text-gray-400">代币地址</Label>
-                    <Input
-                      className="mt-1 bg-black/50 border-white/10 text-white"
-                      placeholder="0x..."
-                      value={sellForm.tokenAddress}
-                      onChange={(e) => setSellForm({...sellForm, tokenAddress: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-gray-400">代币符号</Label>
+                    <Label className="text-gray-400">代币符号 *</Label>
                     <Input
                       className="mt-1 bg-black/50 border-white/10 text-white"
                       placeholder="PEPE"
-                      value={sellForm.tokenSymbol}
-                      onChange={(e) => setSellForm({...sellForm, tokenSymbol: e.target.value.toUpperCase()})}
+                      value={addPortfolioForm.tokenSymbol}
+                      onChange={(e) => setAddPortfolioForm({...addPortfolioForm, tokenSymbol: e.target.value.toUpperCase()})}
                     />
                   </div>
                   <div>
-                    <Label className="text-gray-400">卖出数量</Label>
+                    <Label className="text-gray-400">代币名称</Label>
+                    <Input
+                      className="mt-1 bg-black/50 border-white/10 text-white"
+                      placeholder="Pepe Coin"
+                      value={addPortfolioForm.tokenName}
+                      onChange={(e) => setAddPortfolioForm({...addPortfolioForm, tokenName: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">代币地址 *</Label>
+                    <Input
+                      className="mt-1 bg-black/50 border-white/10 text-white"
+                      placeholder="0x..."
+                      value={addPortfolioForm.tokenAddress}
+                      onChange={(e) => setAddPortfolioForm({...addPortfolioForm, tokenAddress: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">买入数量 *</Label>
                     <Input
                       className="mt-1 bg-black/50 border-white/10 text-white"
                       placeholder="1000"
                       type="number"
-                      value={sellForm.amount}
-                      onChange={(e) => setSellForm({...sellForm, amount: e.target.value})}
+                      value={addPortfolioForm.amount}
+                      onChange={(e) => setAddPortfolioForm({...addPortfolioForm, amount: e.target.value})}
                     />
                   </div>
                   <div>
-                    <Label className="text-gray-400">滑点容忍度 (%)</Label>
+                    <Label className="text-gray-400">买入价格 (USD) *</Label>
                     <Input
                       className="mt-1 bg-black/50 border-white/10 text-white"
+                      placeholder="0.000001"
                       type="number"
-                      value={sellForm.slippage}
-                      onChange={(e) => setSellForm({...sellForm, slippage: e.target.value})}
+                      step="0.000001"
+                      value={addPortfolioForm.buyPrice}
+                      onChange={(e) => setAddPortfolioForm({...addPortfolioForm, buyPrice: e.target.value})}
                     />
-                    <p className="text-xs text-gray-500 mt-1">滑点越高，成交越快，但可能损失更多</p>
                   </div>
-                  <Button
-                    className="w-full bg-red-600 hover:bg-red-700"
-                    onClick={handleFlashSell}
-                    disabled={isSelling}
-                  >
-                    {isSelling ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        卖出中...
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="mr-2 h-4 w-4" />
-                        闪电卖出
-                      </>
-                    )}
-                  </Button>
+                  <div>
+                    <Label className="text-gray-400">买入金额 (原生代币) *</Label>
+                    <Input
+                      className="mt-1 bg-black/50 border-white/10 text-white"
+                      placeholder="0.1"
+                      type="number"
+                      step="0.001"
+                      value={addPortfolioForm.buyAmount}
+                      onChange={(e) => setAddPortfolioForm({...addPortfolioForm, buyAmount: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">利润目标 (%)</Label>
+                    <Input
+                      className="mt-1 bg-black/50 border-white/10 text-white"
+                      placeholder="50"
+                      type="number"
+                      value={addPortfolioForm.profitTarget}
+                      onChange={(e) => setAddPortfolioForm({...addPortfolioForm, profitTarget: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">止损 (%)</Label>
+                    <Input
+                      className="mt-1 bg-black/50 border-white/10 text-white"
+                      placeholder="10"
+                      type="number"
+                      value={addPortfolioForm.stopLoss}
+                      onChange={(e) => setAddPortfolioForm({...addPortfolioForm, stopLoss: e.target.value})}
+                    />
+                  </div>
                 </div>
-                
-                <div className="space-y-2 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                  <p className="text-sm text-blue-400 font-semibold">⚡ 闪电卖出说明</p>
-                  <ul className="text-xs text-blue-300 space-y-1">
-                    <li>• 通过 DEX (Raydium/PancakeSwap/Uniswap) 快速卖出</li>
-                    <li>• 设置适当的滑点以避免交易失败</li>
-                    <li>• 建议在行情波动大时使用高滑点</li>
-                  </ul>
-                </div>
+                <Button
+                  className="w-full mt-4 bg-green-600 hover:bg-green-700"
+                  onClick={handleAddPortfolio}
+                  disabled={isAddingPortfolio}
+                >
+                  {isAddingPortfolio ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      添加中...
+                    </>
+                  ) : (
+                    '添加持仓'
+                  )}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>

@@ -198,6 +198,46 @@ export const autoTrades = pgTable(
 );
 
 // ============================================================================
+// 持仓管理表
+// ============================================================================
+export const portfolios = pgTable(
+  "portfolios",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    walletId: varchar("wallet_id", { length: 36 }).notNull(),
+    chain: varchar("chain", { length: 20 }).notNull(),
+    tokenAddress: varchar("token_address", { length: 256 }).notNull(),
+    tokenSymbol: varchar("token_symbol", { length: 32 }).notNull(),
+    tokenName: varchar("token_name", { length: 128 }),
+    amount: decimal("amount", { precision: 30, scale: 18 }).notNull(), // 当前持有数量
+    buyPrice: decimal("buy_price", { precision: 30, scale: 18 }).notNull(), // 买入价格
+    buyAmount: decimal("buy_amount", { precision: 30, scale: 18 }).notNull(), // 买入金额（原生代币）
+    currentPrice: decimal("current_price", { precision: 30, scale: 18 }), // 当前价格
+    profitTarget: decimal("profit_target", { precision: 10, scale: 2 }), // 利润目标（百分比）
+    stopLoss: decimal("stop_loss", { precision: 10, scale: 2 }), // 止损百分比
+    totalInvested: decimal("total_invested", { precision: 30, scale: 18 }).notNull().default("0"), // 总投入
+    totalValue: decimal("total_value", { precision: 30, scale: 18 }), // 当前价值
+    profitLoss: decimal("profit_loss", { precision: 30, scale: 18 }), // 盈亏金额
+    profitLossPercent: decimal("profit_loss_percent", { precision: 10, scale: 2 }), // 盈亏百分比
+    status: varchar("status", { length: 20 }).notNull().default("active"), // active, sold, closed
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+    soldAt: timestamp("sold_at", { withTimezone: true }),
+  },
+  (table) => ({
+    walletIdx: index("portfolios_wallet_idx").on(table.walletId),
+    chainIdx: index("portfolios_chain_idx").on(table.chain),
+    tokenIdx: index("portfolios_token_idx").on(table.tokenAddress),
+    statusIdx: index("portfolios_status_idx").on(table.status),
+  })
+);
+
+// ============================================================================
 // 配置表
 // ============================================================================
 export const settings = pgTable(
@@ -354,6 +394,41 @@ export const updateAutoTradeSchema = createCoercedInsertSchema(autoTrades)
   })
   .partial();
 
+// Portfolio schemas
+export const insertPortfolioSchema = createCoercedInsertSchema(portfolios).pick({
+  walletId: true,
+  chain: true,
+  tokenAddress: true,
+  tokenSymbol: true,
+  tokenName: true,
+  amount: true,
+  buyPrice: true,
+  buyAmount: true,
+  currentPrice: true,
+  profitTarget: true,
+  stopLoss: true,
+  totalInvested: true,
+  totalValue: true,
+  profitLoss: true,
+  profitLossPercent: true,
+  status: true,
+  metadata: true,
+});
+
+export const updatePortfolioSchema = createCoercedInsertSchema(portfolios)
+  .pick({
+    amount: true,
+    currentPrice: true,
+    profitTarget: true,
+    stopLoss: true,
+    totalValue: true,
+    profitLoss: true,
+    profitLossPercent: true,
+    status: true,
+    metadata: true,
+  })
+  .partial();
+
 // Settings schemas
 export const insertSettingSchema = createCoercedInsertSchema(settings).pick({
   key: true,
@@ -395,6 +470,10 @@ export type InsertAiSentiment = z.infer<typeof insertAiSentimentSchema>;
 export type AutoTrade = typeof autoTrades.$inferSelect;
 export type InsertAutoTrade = z.infer<typeof insertAutoTradeSchema>;
 export type UpdateAutoTrade = z.infer<typeof updateAutoTradeSchema>;
+
+export type Portfolio = typeof portfolios.$inferSelect;
+export type InsertPortfolio = z.infer<typeof insertPortfolioSchema>;
+export type UpdatePortfolio = z.infer<typeof updatePortfolioSchema>;
 
 export type Setting = typeof settings.$inferSelect;
 export type InsertSetting = z.infer<typeof insertSettingSchema>;
