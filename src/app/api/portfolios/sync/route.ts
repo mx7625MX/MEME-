@@ -117,6 +117,11 @@ async function syncWalletPortfolios(walletId: string, db: any) {
         continue; // 跳过未知代币
       }
 
+      // 过滤掉稳定币（USDC, USDT 等）
+      if (tokenInfo.symbol === 'USDC' || tokenInfo.symbol === 'USDT') {
+        continue; // 跳过稳定币
+      }
+
       const currentPrice = await getTokenPrice(wallet.chain, balance.tokenAddress);
       const amount = parseFloat(balance.amount) / Math.pow(10, balance.decimals);
       const totalValue = amount * currentPrice;
