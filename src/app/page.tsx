@@ -73,8 +73,12 @@ export default function MemeMasterPro() {
   const [newWalletName, setNewWalletName] = useState('');
   const [selectedChain, setSelectedChain] = useState('solana');
   const [isCreatingWallet, setIsCreatingWallet] = useState('');
-  const [aiAnalysisResult, setAiAnalysisResult] = useState<any>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  
+  // 智能发现相关状态
+  const [discoverContent, setDiscoverContent] = useState('');
+  const [discoverResult, setDiscoverResult] = useState<any>(null);
+  const [isDiscovering, setIsDiscovering] = useState(false);
+  const [selectedPlatform, setSelectedPlatform] = useState('twitter');
   
   // 发币相关状态
   const [launchForm, setLaunchForm] = useState({
@@ -242,28 +246,54 @@ export default function MemeMasterPro() {
     }
   };
 
-  // AI 情绪分析
-  const handleAiAnalysis = async (tokenSymbol: string) => {
+  // 智能发现
+  const handleDiscover = async () => {
+    if (!discoverContent) {
+      alert('请输入要分析的内容');
+      return;
+    }
+    
     try {
-      setIsAnalyzing(true);
-      const res = await fetch(`${API_BASE}/ai/sentiment`, {
+      setIsDiscovering(true);
+      const res = await fetch(`${API_BASE}/ai/discover`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          tokenSymbol,
-          context: `分析 ${tokenSymbol} 代币的市场情绪，包括价格走势、交易量、市场关注度等方面`
+          content: discoverContent,
+          platform: selectedPlatform
         })
       });
       
       const data = await res.json();
       if (data.success) {
-        setAiAnalysisResult(data.data);
+        setDiscoverResult(data.data);
+      } else {
+        alert(data.error);
       }
     } catch (error) {
-      console.error('Error analyzing sentiment:', error);
+      console.error('Error discovering:', error);
+      alert('智能分析失败');
     } finally {
-      setIsAnalyzing(false);
+      setIsDiscovering(false);
     }
+  };
+  
+  // 使用发现结果一键发币
+  const handleLaunchFromDiscovery = async (suggestion: any) => {
+    if (!launchForm.walletId) {
+      alert('请先在发币系统页面选择钱包');
+      return;
+    }
+    
+    setLaunchForm({
+      ...launchForm,
+      tokenName: suggestion.name,
+      tokenSymbol: suggestion.symbol,
+      totalSupply: suggestion.totalSupply,
+      liquidity: suggestion.liquidity
+    });
+    
+    setActiveTab('launch');
   };
   
   // 发币
@@ -571,11 +601,11 @@ export default function MemeMasterPro() {
           <TabsList className="bg-black/20 border border-white/10 p-1 flex-wrap gap-1">
             <TabsTrigger value="dashboard">仪表盘</TabsTrigger>
             <TabsTrigger value="wallets">钱包管理</TabsTrigger>
+            <TabsTrigger value="discover">智能发现</TabsTrigger>
             <TabsTrigger value="launch">发币系统</TabsTrigger>
             <TabsTrigger value="trading">闪电卖出</TabsTrigger>
             <TabsTrigger value="transfer">转账</TabsTrigger>
             <TabsTrigger value="market">市场监控</TabsTrigger>
-            <TabsTrigger value="sentiment">AI情绪分析</TabsTrigger>
             <TabsTrigger value="history">交易历史</TabsTrigger>
             <TabsTrigger value="autotrade">自动交易</TabsTrigger>
           </TabsList>
@@ -601,7 +631,7 @@ export default function MemeMasterPro() {
                       <li>✅ 钱包管理系统</li>
                       <li>✅ 区块链钱包生成</li>
                       <li>✅ 市场数据监控</li>
-                      <li>✅ AI 情绪分析</li>
+                      <li>✅ 智能发现与一键发币</li>
                       <li>✅ 实时价格更新</li>
                       <li>✅ 发币系统</li>
                       <li>✅ 闪电卖出</li>
@@ -772,86 +802,146 @@ export default function MemeMasterPro() {
             </Card>
           </TabsContent>
 
-          {/* AI 情绪分析 */}
-          <TabsContent value="sentiment" className="space-y-4">
+          {/* 智能发现 */}
+          <TabsContent value="discover" className="space-y-4">
             <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="text-white">AI 情绪分析</CardTitle>
+                <CardTitle className="text-white">智能发现</CardTitle>
                 <CardDescription className="text-gray-400">
-                  使用大语言模型分析市场情绪 - 集成 Doubao 模型
+                  分析社交媒体内容，提取热点关键词，一键发币
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <Input
-                    className="bg-black/50 border-white/10 text-white"
-                    placeholder="输入代币符号，如 PEPE"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleAiAnalysis((e.target as HTMLInputElement).value);
-                      }
-                    }}
-                  />
-                  <Button 
-                    className="bg-purple-600 hover:bg-purple-700"
-                    onClick={() => {
-                      const input = document.querySelector('input[placeholder="输入代币符号，如 PEPE"]') as HTMLInputElement;
-                      if (input?.value) handleAiAnalysis(input.value);
-                    }}
-                    disabled={isAnalyzing}
-                  >
-                    {isAnalyzing ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4 mr-2" />
-                        分析
-                      </>
-                    )}
-                  </Button>
+                <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                  <div className="flex gap-2">
+                    <select
+                      className="bg-black/50 border border-white/10 text-white rounded-md px-3 py-2"
+                      value={selectedPlatform}
+                      onChange={(e) => setSelectedPlatform(e.target.value)}
+                    >
+                      <option value="twitter">Twitter / X</option>
+                      <option value="telegram">Telegram</option>
+                      <option value="reddit">Reddit</option>
+                      <option value="other">其他</option>
+                    </select>
+                    <Input
+                      className="flex-1 bg-black/50 border-white/10 text-white"
+                      placeholder="粘贴大V的推文或热点内容..."
+                      value={discoverContent}
+                      onChange={(e) => setDiscoverContent(e.target.value)}
+                    />
+                    <Button 
+                      className="bg-purple-600 hover:bg-purple-700"
+                      onClick={handleDiscover}
+                      disabled={isDiscovering}
+                    >
+                      {isDiscovering ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Brain className="h-4 w-4 mr-2" />
+                          分析
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    💡 提示：复制大V的推文内容，系统将自动提取关键词并生成代币建议
+                  </p>
                 </div>
                 
-                {aiAnalysisResult && (
-                  <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-white font-semibold">{aiAnalysisResult.tokenSymbol} 情绪分析</h3>
-                      <Badge 
-                        variant="outline"
-                        className={
-                          aiAnalysisResult.sentiment === 'bullish' 
-                            ? 'border-green-500/50 text-green-400' 
-                            : aiAnalysisResult.sentiment === 'bearish'
-                            ? 'border-red-500/50 text-red-400'
-                            : 'border-gray-500/50 text-gray-400'
-                        }
-                      >
-                        {aiAnalysisResult.sentiment === 'bullish' ? '看涨 📈' : 
-                         aiAnalysisResult.sentiment === 'bearish' ? '看跌 📉' : '中性 ➡️'}
-                      </Badge>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-400">情绪评分</p>
-                        <p className="text-lg font-bold text-white">{aiAnalysisResult.score}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-400">分析时间</p>
-                        <p className="text-sm text-gray-300">
-                          {new Date(aiAnalysisResult.createdAt).toLocaleString()}
-                        </p>
+                {discoverResult && (
+                  <div className="space-y-4">
+                    <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                      <h3 className="text-white font-semibold flex items-center gap-2">
+                        <Flame className="h-5 w-5 text-orange-400" />
+                        关键词
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {discoverResult.keywords.map((item: any, idx: number) => (
+                          <Badge 
+                            key={idx}
+                            variant="outline"
+                            className="border-purple-500/50 text-purple-400"
+                          >
+                            {item.word} ({item.freq})
+                          </Badge>
+                        ))}
                       </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-400 mb-2">分析结果</p>
-                      <p className="text-white text-sm">{aiAnalysisResult.analysis}</p>
+                    
+                    <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                      <h3 className="text-white font-semibold flex items-center gap-2">
+                        <Activity className="h-5 w-5 text-blue-400" />
+                        情绪分析
+                      </h3>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-400">情绪</p>
+                          <Badge 
+                            variant="outline"
+                            className={
+                              discoverResult.sentiment.sentiment === 'bullish' 
+                                ? 'border-green-500/50 text-green-400 mt-1' 
+                                : discoverResult.sentiment.sentiment === 'bearish'
+                                ? 'border-red-500/50 text-red-400 mt-1'
+                                : 'border-gray-500/50 text-gray-400 mt-1'
+                            }
+                          >
+                            {discoverResult.sentiment.sentiment === 'bullish' ? '看涨' : 
+                             discoverResult.sentiment.sentiment === 'bearish' ? '看跌' : '中性'}
+                          </Badge>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-400">评分</p>
+                          <p className="text-lg font-bold text-white mt-1">{discoverResult.sentiment.score.toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-400">关键词数</p>
+                          <p className="text-lg font-bold text-white mt-1">{discoverResult.keywords.length}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <h3 className="text-white font-semibold flex items-center gap-2">
+                        <Rocket className="h-5 w-5 text-purple-400" />
+                        代币建议
+                      </h3>
+                      <div className="space-y-3">
+                        {discoverResult.suggestions.map((suggestion: any, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between rounded-lg bg-black/30 p-4 border border-white/10 hover:border-purple-500/50 transition-colors">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-white font-medium">{suggestion.name}</span>
+                                <Badge variant="secondary">{suggestion.symbol}</Badge>
+                                <Badge className="bg-purple-600">{suggestion.relevance}% 相关度</Badge>
+                              </div>
+                              <p className="text-sm text-gray-400">
+                                供应量: {suggestion.totalSupply} | 价格: ${suggestion.price} | 流动性: {suggestion.liquidity}
+                              </p>
+                              <p className="text-xs text-gray-500">{suggestion.description}</p>
+                            </div>
+                            <Button
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={() => handleLaunchFromDiscovery(suggestion)}
+                            >
+                              <Rocket className="mr-2 h-4 w-4" />
+                              一键发币
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
                 
-                {!aiAnalysisResult && !isAnalyzing && (
-                  <div className="text-center py-8 text-gray-500">
-                    <Brain className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>输入代币符号开始 AI 情绪分析</p>
+                {!discoverResult && !isDiscovering && (
+                  <div className="text-center py-12 text-gray-500">
+                    <Brain className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg mb-2">智能发现系统</p>
+                    <p className="text-sm">粘贴社交媒体内容，自动提取热点关键词</p>
+                    <p className="text-sm">生成代币建议，一键发币</p>
                   </div>
                 )}
               </CardContent>
