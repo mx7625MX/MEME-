@@ -110,7 +110,7 @@ export default function MemeMasterPro() {
     liquidity: '',
     imageUrl: '',
     imageKey: '',
-    bundleBuyAmount: '100000000', // 默认捆绑买入 1亿代币
+    bundleBuyAmount: '0.1', // 默认捆绑买入 0.1 SOL/BNB/ETH
     // 流动性配置（做市值）- 仅适用于 AMM DEX（Raydium、Uniswap、PancakeSwap）
     addLiquidity: true, // 默认开启
     liquidityTokenPercent: '50', // 默认使用 50% 供应量
@@ -569,7 +569,7 @@ export default function MemeMasterPro() {
           liquidity: '',
           imageUrl: '',
           imageKey: '',
-          bundleBuyAmount: '100000000',
+          bundleBuyAmount: '0.1',
           addLiquidity: true,
           liquidityTokenPercent: '50',
           pairTokenSymbol: 'auto',
@@ -2813,21 +2813,40 @@ export default function MemeMasterPro() {
                       创作者捆绑买入（必选）
                     </Label>
                     <p className="text-xs text-gray-400 mt-1 mb-2">
-                      作为创作者，您必须是第一个买家。系统将自动在发币后立即买入指定数量的代币。
+                      作为创作者，您必须是第一个买家。系统将自动在发币后立即用指定金额购买代币。
                     </p>
                     <div className="flex items-center gap-3">
                       <Input
                         className="bg-black/50 border-white/10 text-white flex-1"
-                        placeholder="100000000"
+                        placeholder="0.1"
                         type="number"
-                        min="1"
+                        min="0.01"
+                        step="0.01"
                         value={launchForm.bundleBuyAmount}
                         onChange={(e) => setLaunchForm({...launchForm, bundleBuyAmount: e.target.value})}
                       />
-                      <span className="text-gray-300">{launchForm.tokenSymbol || 'TOKEN'}</span>
+                      <span className="text-gray-300">{(() => {
+                        const selectedWallet = wallets.find(w => w.id === launchForm.walletId);
+                        if (!selectedWallet) return 'SOL';
+                        switch (selectedWallet.chain) {
+                          case 'solana': return 'SOL';
+                          case 'bsc': return 'BNB';
+                          case 'eth': return 'ETH';
+                          default: return 'SOL';
+                        }
+                      })()}</span>
                     </div>
                     <p className="text-xs text-gray-500 mt-2">
-                      推荐值：10% - 20% 总供应量 • 将自动创建持仓并启用闪电卖出监控
+                      推荐值：0.1 - 0.5 {(() => {
+                        const selectedWallet = wallets.find(w => w.id === launchForm.walletId);
+                        if (!selectedWallet) return 'SOL';
+                        switch (selectedWallet.chain) {
+                          case 'solana': return 'SOL';
+                          case 'bsc': return 'BNB';
+                          case 'eth': return 'ETH';
+                          default: return 'SOL';
+                        }
+                      })()} • 将自动创建持仓并启用闪电卖出监控
                     </p>
                   </div>
                   <Button

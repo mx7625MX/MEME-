@@ -48,10 +48,13 @@ export async function POST(request: NextRequest) {
     const isBondingCurvePlatform = platform === 'pump.fun' || platform === 'four.meme';
 
     // 创作者捆绑买入逻辑 - 必须是第一个买家
-    // 直接使用用户输入的代币数量
-    const bundleBuyAmountValue = bundleBuyAmount || Math.floor(parseFloat(totalSupply) * 0.1); // 默认买入 10%
-    const initialPrice = '0.000001'; // 初始价格
-    const bundleBuyCost = (parseFloat(bundleBuyAmountValue) * parseFloat(initialPrice)).toString();
+    // bundleBuyAmount 是原生代币金额（如 0.1 SOL），需要根据初始价格计算能买多少代币
+    const bundleBuyNativeAmount = bundleBuyAmount || 0.1; // 默认 0.1 SOL/BNB/ETH
+    const initialPrice = '0.000001'; // 初始价格（原生代币/代币）
+    
+    // 计算能买多少代币：代币数量 = 原生代币金额 / 初始价格
+    const bundleBuyTokenAmount = Math.floor(parseFloat(bundleBuyNativeAmount) / parseFloat(initialPrice));
+    const bundleBuyCost = bundleBuyNativeAmount.toString(); // 实际投入的原生代币金额
 
     // 模拟代币发行逻辑（实际应用中需要调用区块链网络）
     // 这里我们创建一个代币地址和记录
@@ -122,13 +125,14 @@ export async function POST(request: NextRequest) {
       chain,
       tokenAddress: mockTokenAddress,
       tokenSymbol,
-      amount: bundleBuyAmountValue,
+      amount: bundleBuyTokenAmount.toString(),
       price: initialPrice,
       fee: (parseFloat(bundleBuyCost) * 0.001).toString(), // 0.1% 交易费
       status: 'completed' as const,
       metadata: {
         bundleBuy: true, // 标记为捆绑买入
-        bundleBuyAmount: bundleBuyAmountValue,
+        bundleBuyNativeAmount: bundleBuyNativeAmount,
+        bundleBuyTokenAmount: bundleBuyTokenAmount,
         txHash: `0x${Array.from({ length: 64 }, () =>
           Math.floor(Math.random() * 16).toString(16)
         ).join('')}`,
@@ -143,8 +147,8 @@ export async function POST(request: NextRequest) {
 
     // 自动创建持仓记录（创作者模式）
     // 创作者持有剩余的供应量（总供应量 - 捆绑买入数量）
-    const creatorHoldingAmount = (parseFloat(totalSupply) - parseFloat(bundleBuyAmountValue)).toString();
-    const totalBuyAmount = bundleBuyCost; // 实际投入的资金
+    const creatorHoldingAmount = (parseFloat(totalSupply) - bundleBuyTokenAmount).toString();
+    const totalBuyAmount = bundleBuyCost; // 实际投入的原生代币金额
 
     const newPortfolio = {
       walletId,
@@ -154,7 +158,7 @@ export async function POST(request: NextRequest) {
       tokenName,
       amount: creatorHoldingAmount, // 持有剩余的供应量
       buyPrice: initialPrice,
-      buyAmount: totalBuyAmount, // 实际投入的资金
+      buyAmount: totalBuyAmount, // 实际投入的原生代币金额
       currentPrice: initialPrice,
       profitTarget: body.profitTarget || '100', // 默认利润目标 100%
       stopLoss: body.stopLoss || '30', // 默认止损 30%
@@ -178,7 +182,8 @@ export async function POST(request: NextRequest) {
         creatorMode: true,
         launchTxHash: (transaction.metadata as any)?.txHash,
         bundleBuyTxHash: (bundleBuyTransaction.metadata as any)?.txHash, // 捆绑买入交易哈希
-        bundleBuyAmount: bundleBuyAmountValue,
+        bundleBuyNativeAmount: bundleBuyNativeAmount,
+        bundleBuyTokenAmount: bundleBuyTokenAmount,
         isFirstBuyer: true, // 标记为第一个买家
         liquidityPool: `0x${Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`,
       }
@@ -307,10 +312,10 @@ export async function POST(request: NextRequest) {
         liquidityPool,
         liquidityTransaction,
         message: isBondingCurvePlatform
-          ? `代币发行成功！已在 ${body.platform} 上线（Bonding Curve 机制）。您是第一个买家（买入 ${bundleBuyAmountValue} ${tokenSymbol}）。当交易量达到一定阈值后，将自动上线到 DEX。`
+          ? `代币发行成功！已在 ${body.platform} 上线（Bonding Curve 机制）。您是第一个买家（投入 ${bundleBuyNativeAmount} ${chain.toUpperCase()}，买入 ${bundleBuyTokenAmount} ${tokenSymbol}）。当交易量达到一定阈值后，将自动上线到 DEX。`
           : liquidityPool
-          ? `代币发行成功！已自动添加流动性到 ${liquidityPool.metadata?.dexName || 'DEX'}（${tokenSymbol}/${liquidityPool.pairTokenSymbol}），已锁定 ${body.lockDuration || 7} 天。您是第一个买家（买入 ${bundleBuyAmountValue} ${tokenSymbol}）`
-          : `代币发行成功！已自动创建持仓并启用闪电卖出监控。您是第一个买家（买入 ${bundleBuyAmountValue} ${tokenSymbol}）`
+          ? `代币发行成功！已自动添加流动性到 ${liquidityPool.metadata?.dexName || 'DEX'}（${tokenSymbol}/${liquidityPool.pairTokenSymbol}），已锁定 ${body.lockDuration || 7} 天。您是第一个买家（投入 ${bundleBuyNativeAmount} ${chain.toUpperCase()}，买入 ${bundleBuyTokenAmount} ${tokenSymbol}）`
+          : `代币发行成功！已自动创建持仓并启用闪电卖出监控。您是第一个买家（投入 ${bundleBuyNativeAmount} ${chain.toUpperCase()}，买入 ${bundleBuyTokenAmount} ${tokenSymbol}）`
       }
     });
 
