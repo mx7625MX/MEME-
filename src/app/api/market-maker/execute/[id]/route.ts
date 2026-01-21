@@ -191,11 +191,39 @@ async function executeBotSnipe(
     return { executed: false, reason: '机器人狙击未启用' };
   }
 
-  // 模拟狙击买入（实际应用中需要调用区块链）
+  // 使用真实的区块链交易服务
+  const transactionService = TransactionServiceFactory.getService(wallet.chain);
+  let txResult: any = { success: false, txHash: '', error: '' };
+
   const snipeAmount = parseFloat(params.snipeAmount);
-  const mockTxHash = `0x${Array.from({ length: 64 }, () =>
-    Math.floor(Math.random() * 16).toString(16)
-  ).join('')}`;
+
+  if (wallet.chain === 'solana') {
+    const solanaService = TransactionServiceFactory.getSolanaService();
+    const buyAmountSOL = snipeAmount * currentPrice;
+    txResult = await solanaService.executeBuy(
+      wallet.mnemonic,
+      wallet.privateKey,
+      strategy.tokenAddress,
+      buyAmountSOL,
+      9, // Solana 代币默认 9 位小数
+      strategy.platform
+    );
+  } else if (wallet.chain === 'eth' || wallet.chain === 'bsc') {
+    const evmService = TransactionServiceFactory.getEVMService(wallet.chain, '', 0);
+    const buyAmountNative = snipeAmount * currentPrice;
+    txResult = await evmService.executeDEXSwap(
+      wallet.mnemonic,
+      wallet.privateKey,
+      strategy.tokenAddress,
+      buyAmountNative,
+      'buy',
+      strategy.platform
+    );
+  }
+
+  if (!txResult.success) {
+    return { executed: false, reason: `狙击失败: ${txResult.error}` };
+  }
 
   // 创建交易记录
   const newTransaction = {
@@ -207,13 +235,15 @@ async function executeBotSnipe(
     amount: snipeAmount.toString(),
     price: currentPrice.toString(),
     fee: (snipeAmount * currentPrice * 0.003).toString(),
+    txHash: txResult.txHash,
     status: 'completed' as const,
     metadata: {
       strategyId: strategy.id,
       strategyType: 'market_maker',
       action: 'bot_snipe',
       botWalletAddress: botDetection.walletAddress,
-      txHash: mockTxHash,
+      detectionType: botDetection.detectionType,
+      confidence: botDetection.confidence,
       snipeDelay: params.snipeDelay,
     }
   };
@@ -241,7 +271,7 @@ async function executeBotSnipe(
     detectionType: botDetection.detectionType,
     confidence: botDetection.confidence,
     details: {
-      txHash: mockTxHash,
+      txHash: txResult.txHash,
       amount: snipeAmount.toString(),
       price: currentPrice.toString(),
       timestamp: new Date().toISOString(),
@@ -278,14 +308,40 @@ async function executePriceStabilization(
     return { executed: false, reason: '价格稳定未启用' };
   }
 
-  // 计算目标增长率
+  // 使用真实的区块链交易服务
+  const transactionService = TransactionServiceFactory.getService(wallet.chain);
+  let txResult: any = { success: false, txHash: '', error: '' };
+
   const targetGrowthPercent = parseFloat(params.stabilizationTargetGrowth);
   const stabilizationAmount = parseFloat(params.stabilizationAmount);
 
-  // 模拟稳定买入（实际应用中需要调用区块链）
-  const mockTxHash = `0x${Array.from({ length: 64 }, () =>
-    Math.floor(Math.random() * 16).toString(16)
-  ).join('')}`;
+  if (wallet.chain === 'solana') {
+    const solanaService = TransactionServiceFactory.getSolanaService();
+    const buyAmountSOL = stabilizationAmount * currentPrice;
+    txResult = await solanaService.executeBuy(
+      wallet.mnemonic,
+      wallet.privateKey,
+      strategy.tokenAddress,
+      buyAmountSOL,
+      9,
+      strategy.platform
+    );
+  } else if (wallet.chain === 'eth' || wallet.chain === 'bsc') {
+    const evmService = TransactionServiceFactory.getEVMService(wallet.chain, '', 0);
+    const buyAmountNative = stabilizationAmount * currentPrice;
+    txResult = await evmService.executeDEXSwap(
+      wallet.mnemonic,
+      wallet.privateKey,
+      strategy.tokenAddress,
+      buyAmountNative,
+      'buy',
+      strategy.platform
+    );
+  }
+
+  if (!txResult.success) {
+    return { executed: false, reason: `价格稳定失败: ${txResult.error}` };
+  }
 
   // 创建交易记录
   const newTransaction = {
@@ -297,12 +353,12 @@ async function executePriceStabilization(
     amount: stabilizationAmount.toString(),
     price: currentPrice.toString(),
     fee: (stabilizationAmount * currentPrice * 0.003).toString(),
+    txHash: txResult.txHash,
     status: 'completed' as const,
     metadata: {
       strategyId: strategy.id,
       strategyType: 'market_maker',
       action: 'price_stabilization',
-      txHash: mockTxHash,
       targetGrowthPercent,
     }
   };
@@ -349,11 +405,39 @@ async function executeAntiDump(
     return { executed: false, reason: '防砸盘未启用' };
   }
 
-  // 模拟反制买入（实际应用中需要调用区块链）
+  // 使用真实的区块链交易服务
+  const transactionService = TransactionServiceFactory.getService(wallet.chain);
+  let txResult: any = { success: false, txHash: '', error: '' };
+
   const antiDumpAmount = parseFloat(params.antiDumpAmount);
-  const mockTxHash = `0x${Array.from({ length: 64 }, () =>
-    Math.floor(Math.random() * 16).toString(16)
-  ).join('')}`;
+
+  if (wallet.chain === 'solana') {
+    const solanaService = TransactionServiceFactory.getSolanaService();
+    const buyAmountSOL = antiDumpAmount * currentPrice;
+    txResult = await solanaService.executeBuy(
+      wallet.mnemonic,
+      wallet.privateKey,
+      strategy.tokenAddress,
+      buyAmountSOL,
+      9,
+      strategy.platform
+    );
+  } else if (wallet.chain === 'eth' || wallet.chain === 'bsc') {
+    const evmService = TransactionServiceFactory.getEVMService(wallet.chain, '', 0);
+    const buyAmountNative = antiDumpAmount * currentPrice;
+    txResult = await evmService.executeDEXSwap(
+      wallet.mnemonic,
+      wallet.privateKey,
+      strategy.tokenAddress,
+      buyAmountNative,
+      'buy',
+      strategy.platform
+    );
+  }
+
+  if (!txResult.success) {
+    return { executed: false, reason: `防砸盘失败: ${txResult.error}` };
+  }
 
   // 创建交易记录
   const newTransaction = {
@@ -365,13 +449,13 @@ async function executeAntiDump(
     amount: antiDumpAmount.toString(),
     price: currentPrice.toString(),
     fee: (antiDumpAmount * currentPrice * 0.003).toString(),
+    txHash: txResult.txHash,
     status: 'completed' as const,
     metadata: {
       strategyId: strategy.id,
       strategyType: 'market_maker',
       action: 'anti_dump',
       dumpAmount: dumpDetection.amount,
-      txHash: mockTxHash,
     }
   };
 
@@ -398,7 +482,7 @@ async function executeAntiDump(
     detectionType: 'dump',
     confidence: dumpDetection.confidence,
     details: {
-      txHash: mockTxHash,
+      txHash: txResult.txHash,
       amount: antiDumpAmount.toString(),
       price: currentPrice.toString(),
       timestamp: new Date().toISOString(),

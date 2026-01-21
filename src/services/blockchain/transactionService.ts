@@ -254,6 +254,7 @@ export class SolanaTransactionService {
 
   /**
    * Bonding Curve 平台买入（pump.fun、four.meme）
+   * 使用真实的 BondingCurveService
    */
   private async executeBondingCurveBuy(
     mnemonic: string | null,
@@ -266,35 +267,23 @@ export class SolanaTransactionService {
     try {
       const wallet = await this.getWallet(mnemonic, privateKey);
 
-      // 这里需要根据平台的实际合约调用来实现
-      // pump.fun 和 four.meme 都有各自的 Bonding Curve 合约
-      // 以下为简化实现
+      // 导入真实的 BondingCurveService
+      const { getBondingCurveService } = await import('./bondingCurveService');
+      const bondingCurveService = getBondingCurveService(this.rpcUrl);
 
-      const { SystemProgram } = await import('@solana/web3.js');
-      const platformProgramId = platform === 'pump.fun'
-        ? new PublicKey('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P') // pump.fun program
-        : new PublicKey('4s3k2XQ1G7K7Y7Y7Y7Y7Y7Y7Y7Y7Y7Y7Y7Y7Y7Y'); // four.meme program (示例)
+      const result = platform === 'pump.fun'
+        ? await bondingCurveService.buyOnPumpFun(wallet, {
+            tokenMintAddress: tokenAddress,
+            amountSol: amount,
+            slippageTolerance: 0.01,
+          })
+        : await bondingCurveService.buyOnFourMeme(wallet, {
+            tokenMintAddress: tokenAddress,
+            amountSol: amount,
+            slippageTolerance: 0.01,
+          });
 
-      const transaction = new Transaction();
-
-      // 转账到平台（简化实现）
-      transaction.add(
-        SystemProgram.transfer({
-          fromPubkey: wallet.publicKey,
-          toPubkey: platformProgramId,
-          lamports: amount * LAMPORTS_PER_SOL,
-        })
-      );
-
-      // 实际实现需要调用平台的指令
-      // 这里简化处理
-
-      const signature = await sendAndConfirmTransaction(this.connection, transaction, [wallet]);
-
-      return {
-        success: true,
-        txHash: signature,
-      };
+      return result;
     } catch (error) {
       console.error('Bonding Curve 买入失败:', error);
       return {
@@ -306,6 +295,7 @@ export class SolanaTransactionService {
 
   /**
    * Raydium DEX 交易
+   * 使用真实的 RaydiumDEXService
    */
   private async executeRaydiumSwap(
     mnemonic: string | null,
@@ -317,10 +307,31 @@ export class SolanaTransactionService {
     try {
       const wallet = await this.getWallet(mnemonic, privateKey);
 
-      // Raydium 实际实现需要集成 Raydium SDK
-      // 这里为简化实现
+      // 导入真实的 RaydiumDEXService
+      const { DEXServiceFactory } = await import('./dexService');
+      const raydiumService = DEXServiceFactory.getRaydiumService(this.rpcUrl);
 
-      throw new Error('Raydium 交易功能需要集成 Raydium SDK，当前为简化实现');
+      // 根据 side 确定 tokenIn 和 tokenOut
+      // 买入：SOL -> Token
+      // 卖出：Token -> SOL
+      const SOL_ADDRESS = 'So11111111111111111111111111111111111111112';
+      const params = side === 'buy'
+        ? {
+            tokenIn: SOL_ADDRESS,
+            tokenOut: tokenAddress,
+            amountIn: amount,
+            slippageTolerance: 0.01,
+          }
+        : {
+            tokenIn: tokenAddress,
+            tokenOut: SOL_ADDRESS,
+            amountIn: amount,
+            slippageTolerance: 0.01,
+          };
+
+      const result = await raydiumService.swap(wallet, params);
+
+      return result;
     } catch (error) {
       console.error('Raydium 交易失败:', error);
       return {
@@ -501,6 +512,7 @@ export class EVMTransactionService {
 
   /**
    * 执行 DEX 交易（Uniswap、PancakeSwap）
+   * 使用真实的 DEX 服务
    */
   async executeDEXSwap(
     mnemonic: string | null,
@@ -514,11 +526,44 @@ export class EVMTransactionService {
     try {
       const wallet = await this.getWallet(mnemonic, privateKey, derivationPath);
 
-      // 实际实现需要集成 DEX Router 合约
-      // Uniswap V2/V3 Router 或 PancakeSwap Router
-      // 以下为简化实现
+      // 导入真实的 DEX 服务
+      const { DEXServiceFactory } = await import('./dexService');
 
-      throw new Error('DEX 交易功能需要集成 Router 合约，当前为简化实现');
+      // 根据 chainId 选择对应的 DEX
+      const nativeToken = this.chainId === 1 ? '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2' : '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c'; // WETH or WBNB
+
+      const params = side === 'buy'
+        ? {
+            tokenIn: nativeToken,
+            tokenOut: tokenAddress,
+            amountIn: amount,
+            slippageTolerance: 0.01,
+          }
+        : {
+            tokenIn: tokenAddress,
+            tokenOut: nativeToken,
+            amountIn: amount,
+            slippageTolerance: 0.01,
+          };
+
+      let result;
+      if (dex === 'uniswap') {
+        const uniswapService = DEXServiceFactory.getUniswapService(
+          this.rpcUrl,
+          '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D' // Uniswap V2 Router
+        );
+        result = await uniswapService.swap(wallet, params);
+      } else if (dex === 'pancakeswap') {
+        const pancakeSwapService = DEXServiceFactory.getPancakeSwapService(
+          this.rpcUrl,
+          '0x10ED43C718714eb63d5aA57B78B54704E256024E' // PancakeSwap Router
+        );
+        result = await pancakeSwapService.swap(wallet, params);
+      } else {
+        throw new Error(`不支持的 DEX: ${dex}`);
+      }
+
+      return result;
     } catch (error) {
       console.error('DEX 交易失败:', error);
       return {
