@@ -93,12 +93,19 @@ export default function MemeMasterPro() {
   const [importMnemonic, setImportMnemonic] = useState('');
   const [importPrivateKey, setImportPrivateKey] = useState('');
   const [isImporting, setIsImporting] = useState(false);
-  
+
   // 智能发现相关状态
   const [discoverContent, setDiscoverContent] = useState('');
   const [discoverResult, setDiscoverResult] = useState<any>(null);
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState('twitter');
+
+  // 多源热点聚合相关状态
+  const [hotspotKeywords, setHotspotKeywords] = useState('cryptocurrency,bitcoin,ethereum');
+  const [isAggregating, setIsAggregating] = useState(false);
+  const [aggregatedResults, setAggregatedResults] = useState<any>(null);
+  const [isAnalyzingHotspots, setIsAnalyzingHotspots] = useState(false);
+  const [hotspotAnalysis, setHotspotAnalysis] = useState<any>(null);
   
   // 发币相关状态
   const [launchForm, setLaunchForm] = useState({
@@ -483,18 +490,18 @@ export default function MemeMasterPro() {
       alert('请输入要分析的内容');
       return;
     }
-    
+
     try {
       setIsDiscovering(true);
       const res = await fetch(`${API_BASE}/ai/discover`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           content: discoverContent,
           platform: selectedPlatform
         })
       });
-      
+
       const data = await res.json();
       if (data.success) {
         setDiscoverResult(data.data);
@@ -506,6 +513,66 @@ export default function MemeMasterPro() {
       alert('智能分析失败');
     } finally {
       setIsDiscovering(false);
+    }
+  };
+
+  // 多源热点聚合
+  const handleAggregateHotspots = async () => {
+    const keywords = hotspotKeywords.split(',').map(k => k.trim()).filter(k => k);
+    if (keywords.length === 0) {
+      alert('请输入至少一个关键词');
+      return;
+    }
+
+    try {
+      setIsAggregating(true);
+      const res = await fetch(`${API_BASE}/hotspots/aggregate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keywords })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setAggregatedResults(data.data);
+      } else {
+        alert(data.error);
+      }
+    } catch (error) {
+      console.error('Error aggregating hotspots:', error);
+      alert('聚合热点失败');
+    } finally {
+      setIsAggregating(false);
+    }
+  };
+
+  // 分析热点并生成交易建议
+  const handleAnalyzeHotspots = async () => {
+    const keywords = hotspotKeywords.split(',').map(k => k.trim()).filter(k => k);
+    if (keywords.length === 0) {
+      alert('请输入至少一个关键词');
+      return;
+    }
+
+    try {
+      setIsAnalyzingHotspots(true);
+      const res = await fetch(`${API_BASE}/hotspots/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keywords })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setHotspotAnalysis(data.data);
+      } else {
+        alert(data.error);
+      }
+    } catch (error) {
+      console.error('Error analyzing hotspots:', error);
+      alert('分析热点失败');
+    } finally {
+      setIsAnalyzingHotspots(false);
     }
   };
   
@@ -2552,13 +2619,311 @@ export default function MemeMasterPro() {
                     </div>
                   </div>
                 )}
-                
+
                 {!discoverResult && !isDiscovering && (
                   <div className="text-center py-12 text-gray-500">
                     <Brain className="h-16 w-16 mx-auto mb-4 opacity-50" />
                     <p className="text-lg mb-2">智能发现系统</p>
                     <p className="text-sm">粘贴社交媒体内容，自动提取热点关键词</p>
                     <p className="text-sm">生成代币建议，一键发币</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 多源热点聚合 */}
+            <Card className="bg-black/20 border-white/10 backdrop-blur-sm mt-4">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Flame className="h-5 w-5 text-orange-400" />
+                  多源热点聚合
+                  <Badge className="bg-orange-600">全新</Badge>
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  从新闻、Reddit、社交媒体、数据聚合平台等多个数据源聚合热点信息，实时捕捉市场趋势
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* 关键词输入 */}
+                <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                  <div className="flex gap-2">
+                    <Input
+                      className="flex-1 bg-black/50 border-white/10 text-white"
+                      placeholder="输入关键词，用逗号分隔（如：cryptocurrency,bitcoin,ethereum）"
+                      value={hotspotKeywords}
+                      onChange={(e) => setHotspotKeywords(e.target.value)}
+                    />
+                    <Button
+                      className="bg-purple-600 hover:bg-purple-700"
+                      onClick={handleAggregateHotspots}
+                      disabled={isAggregating}
+                    >
+                      {isAggregating ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Search className="h-4 w-4 mr-2" />
+                          聚合
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10"
+                      onClick={handleAnalyzeHotspots}
+                      disabled={isAnalyzingHotspots}
+                    >
+                      {isAnalyzingHotspots ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Brain className="h-4 w-4 mr-2" />
+                          智能分析
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    💡 提示：从多个数据源（新闻、Reddit、社交媒体、数据聚合平台、链上数据）聚合热点信息
+                  </p>
+                </div>
+
+                {/* 聚合结果展示 */}
+                {aggregatedResults && (
+                  <div className="space-y-4">
+                    {/* 热门趋势 */}
+                    {aggregatedResults.trending && aggregatedResults.trending.length > 0 && (
+                      <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h3 className="text-white font-semibold flex items-center gap-2">
+                          <TrendingUp className="h-5 w-5 text-green-400" />
+                          当前热门趋势
+                        </h3>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                          {aggregatedResults.trending.slice(0, 5).map((topic: any, idx: number) => (
+                            <div
+                              key={idx}
+                              className={`p-3 rounded-lg border ${
+                                topic.growth > 0
+                                  ? 'bg-green-900/20 border-green-500/30'
+                                  : 'bg-red-900/20 border-red-500/30'
+                              }`}
+                            >
+                              <p className="text-white font-medium text-sm">{topic.keyword}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className={`text-xs font-bold ${topic.growth > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                  {topic.growth > 0 ? '+' : ''}{topic.growth}%
+                                </span>
+                                <Badge variant="secondary" className="text-xs">{topic.score}分</Badge>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 新闻源 */}
+                    {aggregatedResults.news && aggregatedResults.news.length > 0 && (
+                      <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h3 className="text-white font-semibold flex items-center gap-2">
+                          <Activity className="h-5 w-5 text-blue-400" />
+                          新闻资讯
+                          <Badge variant="outline" className="text-xs">{aggregatedResults.news.length} 条</Badge>
+                        </h3>
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                          {aggregatedResults.news.slice(0, 5).map((item: any, idx: number) => (
+                            <div key={idx} className="p-3 bg-black/50 rounded-lg border border-white/5 hover:border-blue-500/30 transition-colors">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1">
+                                  <p className="text-white text-sm font-medium">{item.title}</p>
+                                  <p className="text-xs text-gray-400 mt-1 line-clamp-2">{item.content}</p>
+                                </div>
+                                <div className="flex flex-col items-end gap-1">
+                                  <Badge variant="outline" className="text-xs border-blue-500/50 text-blue-400">
+                                    {item.source}
+                                  </Badge>
+                                  {item.relevanceScore && (
+                                    <span className="text-xs text-gray-500">{Math.round(item.relevanceScore)}%相关</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Reddit讨论 */}
+                    {aggregatedResults.reddit && aggregatedResults.reddit.length > 0 && (
+                      <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h3 className="text-white font-semibold flex items-center gap-2">
+                          <Users className="h-5 w-5 text-orange-400" />
+                          Reddit 社区讨论
+                          <Badge variant="outline" className="text-xs">{aggregatedResults.reddit.length} 条</Badge>
+                        </h3>
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                          {aggregatedResults.reddit.slice(0, 5).map((item: any, idx: number) => (
+                            <div key={idx} className="p-3 bg-black/50 rounded-lg border border-white/5 hover:border-orange-500/30 transition-colors">
+                              <p className="text-white text-sm font-medium">{item.title}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge variant="outline" className="text-xs border-orange-500/50 text-orange-400">
+                                  {item.source}
+                                </Badge>
+                                {item.tags && item.tags.map((tag: string, tagIdx: number) => (
+                                  <Badge key={tagIdx} variant="secondary" className="text-xs">{tag}</Badge>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 数据聚合平台 */}
+                    {aggregatedResults.aggregator && aggregatedResults.aggregator.length > 0 && (
+                      <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h3 className="text-white font-semibold flex items-center gap-2">
+                          <BarChart3 className="h-5 w-5 text-purple-400" />
+                          市场数据
+                          <Badge variant="outline" className="text-xs">{aggregatedResults.aggregator.length} 条</Badge>
+                        </h3>
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                          {aggregatedResults.aggregator.slice(0, 5).map((item: any, idx: number) => (
+                            <div key={idx} className="p-3 bg-black/50 rounded-lg border border-white/5 hover:border-purple-500/30 transition-colors">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1">
+                                  <p className="text-white text-sm font-medium">{item.title}</p>
+                                  <p className="text-xs text-gray-400 mt-1 line-clamp-2">{item.content}</p>
+                                </div>
+                                <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
+                                  {item.source}
+                                </Badge>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 社交媒体 */}
+                    {aggregatedResults.social && aggregatedResults.social.length > 0 && (
+                      <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h3 className="text-white font-semibold flex items-center gap-2">
+                          <Send className="h-5 w-5 text-cyan-400" />
+                          社交媒体
+                          <Badge variant="outline" className="text-xs">{aggregatedResults.social.length} 条</Badge>
+                        </h3>
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                          {aggregatedResults.social.slice(0, 5).map((item: any, idx: number) => (
+                            <div key={idx} className="p-3 bg-black/50 rounded-lg border border-white/5 hover:border-cyan-500/30 transition-colors">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1">
+                                  <p className="text-white text-sm font-medium">{item.title}</p>
+                                  <p className="text-xs text-gray-400 mt-1 line-clamp-2">{item.content}</p>
+                                </div>
+                                <Badge variant="outline" className="text-xs border-cyan-500/50 text-cyan-400">
+                                  Twitter/X
+                                </Badge>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 链上数据 */}
+                    {aggregatedResults.onChain && aggregatedResults.onChain.length > 0 && (
+                      <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h3 className="text-white font-semibold flex items-center gap-2">
+                          <Shield className="h-5 w-5 text-yellow-400" />
+                          链上数据
+                          <Badge variant="outline" className="text-xs">{aggregatedResults.onChain.length} 条</Badge>
+                        </h3>
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                          {aggregatedResults.onChain.slice(0, 5).map((item: any, idx: number) => (
+                            <div key={idx} className="p-3 bg-black/50 rounded-lg border border-white/5 hover:border-yellow-500/30 transition-colors">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1">
+                                  <p className="text-white text-sm font-medium">{item.title}</p>
+                                  <p className="text-xs text-gray-400 mt-1 line-clamp-2">{item.content}</p>
+                                </div>
+                                <Badge variant="outline" className="text-xs border-yellow-500/50 text-yellow-400">
+                                  {item.source}
+                                </Badge>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 热点分析结果 */}
+                {hotspotAnalysis && (
+                  <div className="space-y-4">
+                    <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                      <h3 className="text-white font-semibold flex items-center gap-2">
+                        <Brain className="h-5 w-5 text-purple-400" />
+                        分析摘要
+                      </h3>
+                      <p className="text-sm text-gray-300">{hotspotAnalysis.summary}</p>
+                    </div>
+
+                    {/* 交易建议 */}
+                    {hotspotAnalysis.suggestions && hotspotAnalysis.suggestions.length > 0 && (
+                      <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h3 className="text-white font-semibold flex items-center gap-2">
+                          <Rocket className="h-5 w-5 text-green-400" />
+                          交易建议
+                        </h3>
+                        <div className="space-y-2">
+                          {hotspotAnalysis.suggestions.slice(0, 5).map((suggestion: any, idx: number) => (
+                            <div
+                              key={idx}
+                              className={`p-3 rounded-lg border ${
+                                suggestion.action === 'BUY'
+                                  ? 'bg-green-900/20 border-green-500/30'
+                                  : suggestion.action === 'SELL'
+                                  ? 'bg-red-900/20 border-red-500/30'
+                                  : 'bg-gray-900/20 border-gray-500/30'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <Badge
+                                      className={
+                                        suggestion.action === 'BUY'
+                                          ? 'bg-green-600'
+                                          : suggestion.action === 'SELL'
+                                          ? 'bg-red-600'
+                                          : 'bg-gray-600'
+                                      }
+                                    >
+                                      {suggestion.action}
+                                    </Badge>
+                                    <span className="text-white font-medium">{suggestion.token}</span>
+                                  </div>
+                                  <p className="text-xs text-gray-400 mt-1">{suggestion.reason}</p>
+                                </div>
+                                <Badge variant="outline" className="text-xs">
+                                  {suggestion.confidence}% 置信度
+                                </Badge>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {!aggregatedResults && !hotspotAnalysis && !isAggregating && !isAnalyzingHotspots && (
+                  <div className="text-center py-12 text-gray-500">
+                    <Flame className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg mb-2">多源热点聚合系统</p>
+                    <p className="text-sm">从新闻、Reddit、社交媒体、数据聚合平台、链上数据等多个数据源</p>
+                    <p className="text-sm">聚合热点信息，实时捕捉市场趋势</p>
                   </div>
                 )}
               </CardContent>
