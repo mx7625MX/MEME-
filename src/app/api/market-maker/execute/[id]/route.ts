@@ -3,6 +3,7 @@ import { getDb } from 'coze-coding-dev-sdk';
 import { marketMakerStrategies, wallets, transactions, tokens, portfolios, botDetectionLogs } from '@/storage/database/shared/schema';
 import { insertTransactionSchema, insertPortfolioSchema, insertBotDetectionLogSchema } from '@/storage/database/shared/schema';
 import { eq, and, lt, gte } from 'drizzle-orm';
+import { TransactionServiceFactory } from '@/services/blockchain/transactionService';
 
 // 机器人检测逻辑
 function detectBotAction(tx: any, platform: string): {
@@ -94,10 +95,37 @@ async function executeFloorBuy(
     floorMaxBuy - floorBought
   );
 
-  // 模拟买入交易（实际应用中需要调用区块链）
-  const mockTxHash = `0x${Array.from({ length: 64 }, () =>
-    Math.floor(Math.random() * 16).toString(16)
-  ).join('')}`;
+  // 执行真实区块链交易
+  const transactionService = TransactionServiceFactory.getService(wallet.chain);
+  let txResult: any = { success: false, txHash: '', error: '' };
+
+  if (wallet.chain === 'solana') {
+    const solanaService = TransactionServiceFactory.getSolanaService();
+    const buyAmountSOL = floorBuyAmount * currentPrice;
+    txResult = await solanaService.executeBuy(
+      wallet.mnemonic,
+      wallet.privateKey,
+      strategy.tokenAddress,
+      buyAmountSOL,
+      token.decimals || 9,
+      strategy.platform
+    );
+  } else if (wallet.chain === 'eth' || wallet.chain === 'bsc') {
+    const evmService = TransactionServiceFactory.getEVMService(wallet.chain, '', 0);
+    const buyAmountNative = floorBuyAmount * currentPrice;
+    txResult = await evmService.executeDEXSwap(
+      wallet.mnemonic,
+      wallet.privateKey,
+      strategy.tokenAddress,
+      buyAmountNative,
+      'buy',
+      strategy.platform
+    );
+  }
+
+  if (!txResult.success) {
+    return { executed: false, reason: `交易失败: ${txResult.error}` };
+  }
 
   // 创建交易记录
   const newTransaction = {
@@ -109,12 +137,12 @@ async function executeFloorBuy(
     amount: floorBuyAmount.toString(),
     price: currentPrice.toString(),
     fee: (floorBuyAmount * currentPrice * 0.003).toString(),
+    txHash: txResult.txHash,
     status: 'completed' as const,
     metadata: {
       strategyId: strategy.id,
       strategyType: 'market_maker',
       action: 'floor_buy',
-      txHash: mockTxHash,
       floorPrice: floorPrice.toString(),
     }
   };
@@ -402,7 +430,7 @@ export async function POST(
   try {
     const db = await getDb();
     const { id } = await context.params;
-    let body = {};
+    let body: { botDetection?: any; dumpDetection?: any } = {};
     try {
       body = await request.json();
     } catch (e) {

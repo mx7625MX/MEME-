@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { STRATEGY_TEMPLATES, getStrategyTemplate, applyStrategyTemplate } from '@/config/strategyTemplates';
 import { Label } from '@/components/ui/label';
 import {
   Dialog,
@@ -570,6 +571,43 @@ export function MarketMakerManager() {
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>策略模板（可选）</Label>
+                      <Select
+                        value=""
+                        onValueChange={(value) => {
+                          if (value) {
+                            const template = getStrategyTemplate(value);
+                            if (template) {
+                              const applied = applyStrategyTemplate(template);
+                              setStrategyForm({
+                                ...strategyForm,
+                                ...applied,
+                                params: { ...strategyForm.params, ...applied.params },
+                              });
+                            }
+                          }
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="选择策略模板" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">不使用模板</SelectItem>
+                          {STRATEGY_TEMPLATES.map((template) => (
+                            <SelectItem key={template.id} value={template.id}>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{template.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {template.description}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div className="space-y-2">

@@ -421,6 +421,42 @@ export const botDetectionLogs = pgTable(
 );
 
 // ============================================================================
+// 策略组表（多策略协同管理）
+// ============================================================================
+export const marketMakerStrategyGroups = pgTable(
+  "market_maker_strategy_groups",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    groupId: varchar("group_id", { length: 36 }), // 策略组ID（如果记录属于某个组）
+    name: varchar("name", { length: 128 }), // 组名称或单个策略名称
+    strategyId: varchar("strategy_id", { length: 36 }).references(() => marketMakerStrategies.id), // 关联的策略ID
+    tokenAddress: varchar("token_address", { length: 128 }), // 目标代币地址
+    tokenSymbol: varchar("token_symbol", { length: 32 }), // 代币符号
+    coordinationType: varchar("coordination_type", { length: 32 }), // 协同类型：parallel, sequential, priority
+    priority: integer("priority").default(0), // 优先级（用于顺序执行）
+    isEnabled: boolean("is_enabled").notNull().default(true), // 是否启用
+    coordinationRules: jsonb("coordination_rules").notNull().$type<Record<string, any>>().default({}), // 协同规则
+    totalExecuted: integer("total_executed").notNull().default(0), // 总执行次数
+    lastExecutedAt: timestamp("last_executed_at", { withTimezone: true }), // 最后执行时间
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    metadata: jsonb("metadata").$type<Record<string, any>>().default({}),
+  },
+  (table) => ({
+    groupIdIdx: index("mm_groups_group_idx").on(table.groupId),
+    strategyIdx: index("mm_groups_strategy_idx").on(table.strategyId),
+    tokenIdx: index("mm_groups_token_idx").on(table.tokenAddress),
+    isEnabledIdx: index("mm_groups_enabled_idx").on(table.isEnabled),
+  })
+);
+
+// ============================================================================
 // 审计日志表
 // ============================================================================
 export const auditLogs = pgTable(
@@ -736,6 +772,20 @@ export const insertAuditLogSchema = createCoercedInsertSchema(auditLogs).pick({
   event: true,
   details: true,
   severity: true,
+});
+
+// Strategy Group schemas
+export const insertMarketMakerStrategyGroupSchema = createCoercedInsertSchema(marketMakerStrategyGroups).pick({
+  groupId: true,
+  name: true,
+  strategyId: true,
+  tokenAddress: true,
+  tokenSymbol: true,
+  coordinationType: true,
+  priority: true,
+  isEnabled: true,
+  coordinationRules: true,
+  metadata: true,
 });
 
 // ============================================================================
