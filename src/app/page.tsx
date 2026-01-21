@@ -930,7 +930,7 @@ export default function MemeMasterPro() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          mode: 'ai', // 使用AI模拟模式
+          mode: 'search', // 使用联网搜索模式获取真实内容
           count: 5,
         }),
       });

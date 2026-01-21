@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from 'coze-coding-dev-sdk';
+import { getDb, SearchClient, Config } from 'coze-coding-dev-sdk';
 import { aiSentiments } from '@/storage/database/shared/schema';
 import { eq } from 'drizzle-orm';
 import { INFLUENCERS } from '@/config/influencers';
 
 /**
  * 获取大V最新内容并进行分析
- * 支持两种模式：
- * 1. 真实API模式：调用社交媒体API获取真实内容
- * 2. AI模拟模式：使用大语言模型生成符合大V风格的模拟内容
+ * 支持三种模式：
+ * 1. 联网搜索模式：使用Web搜索获取大V真实发布的内容（推荐）
+ * 2. 真实API模式：调用社交媒体API获取真实内容
+ * 3. AI模拟模式：使用大语言模型生成符合大V风格的模拟内容
  */
 
 interface FetchContentRequest {
-  mode?: 'real' | 'ai'; // real: 真实API, ai: AI模拟
+  mode?: 'search' | 'real' | 'ai'; // search: 联网搜索, real: 真实API, ai: AI模拟
   count?: number; // 获取内容数量
 }
 
@@ -27,6 +28,68 @@ const TELEGRAM_API_CONFIG = {
   baseUrl: 'https://api.telegram.org',
   botToken: process.env.TELEGRAM_BOT_TOKEN || '',
 };
+
+/**
+ * 使用联网搜索获取大V的真实内容
+ */
+async function fetchFromWebSearch(influencer: any, count: number = 5) {
+  try {
+    const config = new Config();
+    const client = new SearchClient(config);
+
+    // 构建搜索查询，使用大V的handle和关键词
+    const searchQuery = `${influencer.handle} site:twitter.com OR site:x.com ${influencer.keywords?.slice(0, 3).join(' OR ') || ''}`;
+
+    // 使用高级搜索，限制时间范围为最近1天
+    const response = await client.advancedSearch(searchQuery, {
+      searchType: 'web',
+      count: count * 2, // 多获取一些，然后过滤
+      needContent: true,
+      needUrl: true,
+      timeRange: '1d', // 最近1天
+      needSummary: true,
+    });
+
+    if (!response.web_items || response.web_items.length === 0) {
+      // 如果没有找到最近1天的内容，尝试扩大时间范围
+      const fallbackResponse = await client.advancedSearch(searchQuery, {
+        searchType: 'web',
+        count: count * 2,
+        needContent: true,
+        needUrl: true,
+        timeRange: '1w', // 最近1周
+        needSummary: true,
+      });
+
+      if (!fallbackResponse.web_items || fallbackResponse.web_items.length === 0) {
+        throw new Error('未找到相关内容');
+      }
+
+      return fallbackResponse.web_items.slice(0, count).map((item: any) => ({
+        id: `search-${item.id}`,
+        content: item.content || item.snippet,
+        platform: 'twitter',
+        createdAt: item.publish_time || new Date().toISOString(),
+        url: item.url,
+        source: item.site_name,
+        isSimulated: false,
+      }));
+    }
+
+    return response.web_items.slice(0, count).map((item: any) => ({
+      id: `search-${item.id}`,
+      content: item.content || item.snippet,
+      platform: 'twitter',
+      createdAt: item.publish_time || new Date().toISOString(),
+      url: item.url,
+      source: item.site_name,
+      isSimulated: false,
+    }));
+  } catch (error) {
+    console.error('Error fetching from web search:', error);
+    throw error;
+  }
+}
 
 /**
  * 从Twitter API获取大V最新推文
@@ -318,13 +381,16 @@ export async function POST(
 
     // 解析请求参数
     const body = await request.json();
-    const mode = body.mode || 'ai'; // 默认使用AI模拟模式
+    const mode = body.mode || 'search'; // 默认使用联网搜索模式
     const count = body.count || 5;
 
     let contents: any[] = [];
 
     // 根据模式获取内容
-    if (mode === 'real') {
+    if (mode === 'search') {
+      // 联网搜索模式（推荐）
+      contents = await fetchFromWebSearch(influencer, count);
+    } else if (mode === 'real') {
       // 真实API模式
       if (influencer.platform === 'twitter') {
         contents = await fetchFromTwitter(influencer.handle, count);
@@ -396,6 +462,8 @@ export async function POST(
         },
         message: mode === 'ai'
           ? `已生成${contents.length}条${influencer.name}的模拟内容并完成分析`
+          : mode === 'search'
+          ? `已通过联网搜索获取${contents.length}条${influencer.name}的最新内容并完成分析`
           : `已获取${contents.length}条${influencer.name}的最新内容并完成分析`,
       },
     });
@@ -431,7 +499,8 @@ export async function GET(
       success: true,
       data: {
         ...influencer,
-        supportedModes: ['ai'], // AI模拟模式总是可用
+        supportedModes: ['search', 'ai', 'real'], // 联网搜索、AI模拟、真实API
+        recommendedMode: 'search', // 推荐使用联网搜索模式
         realApiSupported: influencer.platform === 'twitter' || influencer.platform === 'telegram',
       },
     });
