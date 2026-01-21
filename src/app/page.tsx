@@ -142,6 +142,8 @@ export default function MemeMasterPro() {
     slippage: '5'
   });
   const [isSelling, setIsSelling] = useState(false);
+  const [selectedPortfolioIds, setSelectedPortfolioIds] = useState<string[]>([]);
+  const [sellPercentage, setSellPercentage] = useState<number | null>(null);
   
   // 持仓管理相关状态
   const [portfolios, setPortfolios] = useState<any[]>([]);
@@ -754,6 +756,95 @@ export default function MemeMasterPro() {
     } catch (error) {
       console.error('Error quick flash sell:', error);
       alert('闪电卖出失败');
+    } finally {
+      setIsSelling(false);
+    }
+  };
+
+  // 批量闪电卖出
+  const handleBatchFlashSell = async (percentage: number) => {
+    if (selectedPortfolioIds.length === 0) {
+      alert('请先选择要卖出的代币');
+      return;
+    }
+
+    // 获取选中的持仓
+    const selectedPortfolios = portfolios.filter(p => 
+      selectedPortfolioIds.includes(p.id) && p.status === 'active'
+    );
+
+    if (selectedPortfolios.length === 0) {
+      alert('未找到有效的持仓');
+      return;
+    }
+
+    // 生成确认信息
+    const confirmMessage = selectedPortfolios.map(p => {
+      const sellAmount = percentage === 100 
+        ? parseFloat(p.amount)
+        : parseFloat(p.amount) * (percentage / 100);
+      return `${p.tokenSymbol}: ${sellAmount.toLocaleString()} (${percentage === 100 ? '全部' : percentage + '%'})`;
+    }).join('\n');
+
+    if (!confirm(`确定要批量卖出以下代币吗？\n\n${confirmMessage}\n\n共 ${selectedPortfolios.length} 个代币\n滑点设置: ${sellForm.slippage}%`)) {
+      return;
+    }
+    
+    try {
+      setIsSelling(true);
+      
+      // 顺序执行卖出操作
+      const results = [];
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const portfolio of selectedPortfolios) {
+        try {
+          const sellAmount = percentage === 100
+            ? portfolio.amount
+            : (parseFloat(portfolio.amount) * (percentage / 100)).toString();
+
+          const res = await fetch(`${API_BASE}/portfolios/${portfolio.id}/sell`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              sellAmount,
+              slippage: parseFloat(sellForm.slippage) || 5
+            })
+          });
+          
+          const data = await res.json();
+          if (data.success) {
+            successCount++;
+            results.push({ symbol: portfolio.tokenSymbol, success: true, message: data.data.message });
+          } else {
+            failCount++;
+            results.push({ symbol: portfolio.tokenSymbol, success: false, message: data.error });
+          }
+        } catch (error) {
+          failCount++;
+          results.push({ symbol: portfolio.tokenSymbol, success: false, message: '卖出失败' });
+        }
+      }
+
+      // 显示结果
+      const resultSummary = results.map(r => 
+        `${r.success ? '✓' : '✗'} ${r.symbol}: ${r.message}`
+      ).join('\n');
+      
+      alert(`批量卖出完成！\n\n成功: ${successCount} 个\n失败: ${failCount} 个\n\n详细结果:\n${resultSummary}`);
+      
+      // 重置选择
+      setSelectedPortfolioIds([]);
+      setSellPercentage(null);
+      
+      // 刷新数据
+      loadPortfolios();
+      loadTransactions();
+      loadWallets();
+    } catch (error) {
+      console.error('Error batch flash sell:', error);
+      alert('批量闪电卖出失败');
     } finally {
       setIsSelling(false);
     }
@@ -3293,46 +3384,76 @@ export default function MemeMasterPro() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-4">
-                  {/* 代币选择器 */}
+                  {/* 代币选择器 - 多选模式 */}
                   <div>
-                    <Label className="text-white mb-2 block">选择要卖出的代币</Label>
-                    <select
-                      className="w-full bg-black/50 border border-white/20 text-white rounded-md px-3 py-2"
-                      value={sellForm.tokenAddress || ''}
-                      onChange={(e) => {
-                        const selectedPortfolio = portfolios.find(p => p.id === e.target.value);
-                        if (selectedPortfolio) {
-                          setSellForm(prev => ({
-                            ...prev,
-                            tokenAddress: selectedPortfolio.tokenAddress,
-                            tokenSymbol: selectedPortfolio.tokenSymbol,
-                            walletId: selectedPortfolio.walletId,
-                            amount: selectedPortfolio.amount
-                          }));
-                        }
-                      }}
-                    >
-                      <option value="">-- 请选择代币 --</option>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-white">选择要卖出的代币</Label>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          if (selectedPortfolioIds.length === portfolios.filter(p => p.status === 'active').length) {
+                            setSelectedPortfolioIds([]);
+                          } else {
+                            setSelectedPortfolioIds(portfolios.filter(p => p.status === 'active').map(p => p.id));
+                          }
+                        }}
+                        className="text-purple-400 hover:text-purple-300 text-xs"
+                      >
+                        {selectedPortfolioIds.length === portfolios.filter(p => p.status === 'active').length ? '取消全选' : '全选'}
+                      </Button>
+                    </div>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
                       {portfolios.filter(p => p.status === 'active').map(portfolio => (
-                        <option key={portfolio.id} value={portfolio.id}>
-                          {portfolio.tokenSymbol} - {portfolio.tokenName || 'Unknown'} ({portfolio.chain.toUpperCase()}) - 持有: {parseFloat(portfolio.amount).toLocaleString()} - 盈亏: {portfolio.profitLossPercent ? `${parseFloat(portfolio.profitLossPercent).toFixed(2)}%` : '-'}
-                        </option>
+                        <label key={portfolio.id} className="flex items-center p-3 bg-black/50 border border-white/10 rounded-lg cursor-pointer hover:border-purple-500/50 transition-colors">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 mr-3 accent-purple-600"
+                            checked={selectedPortfolioIds.includes(portfolio.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedPortfolioIds(prev => [...prev, portfolio.id]);
+                              } else {
+                                setSelectedPortfolioIds(prev => prev.filter(id => id !== portfolio.id));
+                              }
+                            }}
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-white font-medium">{portfolio.tokenSymbol}</span>
+                              <Badge variant="outline" className="border-purple-500/50 text-purple-400 text-xs">
+                                {portfolio.chain.toUpperCase()}
+                              </Badge>
+                              <span className="text-sm text-gray-400">
+                                持有: {parseFloat(portfolio.amount).toLocaleString()}
+                              </span>
+                              <span className={`text-xs font-medium ${
+                                parseFloat(portfolio.profitLossPercent || 0) >= 0 ? 'text-green-400' : 'text-red-400'
+                              }`}>
+                                {portfolio.profitLossPercent ? `${parseFloat(portfolio.profitLossPercent).toFixed(2)}%` : '-'}
+                              </span>
+                            </div>
+                            {portfolio.tokenName && (
+                              <p className="text-xs text-gray-500 mt-1">{portfolio.tokenName}</p>
+                            )}
+                          </div>
+                        </label>
                       ))}
-                    </select>
+                      {portfolios.filter(p => p.status === 'active').length === 0 && (
+                        <div className="text-center py-4 text-gray-500 text-sm">
+                          暂无活跃持仓
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* 卖出信息显示 */}
-                  {sellForm.tokenAddress && (
+                  {selectedPortfolioIds.length > 0 && (
                     <div className="p-4 bg-black/30 rounded-lg border border-white/10 space-y-3">
+                      <div className="text-white font-medium mb-2">
+                        已选择 {selectedPortfolioIds.length} 个代币
+                      </div>
                       <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <p className="text-gray-500">代币符号</p>
-                          <p className="text-white font-medium">{sellForm.tokenSymbol}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500">当前持有</p>
-                          <p className="text-white font-medium">{parseFloat(sellForm.amount || '0').toLocaleString()}</p>
-                        </div>
                         <div>
                           <p className="text-gray-500">滑点设置</p>
                           <Input
@@ -3345,50 +3466,82 @@ export default function MemeMasterPro() {
                           <span className="text-xs text-gray-500 ml-1">%</span>
                         </div>
                         <div>
-                          <p className="text-gray-500 mb-2">快速操作</p>
-                          <Button
-                            onClick={() => handleQuickFlashSell('all')}
-                            disabled={isSelling || !sellForm.tokenAddress}
-                            className="bg-red-600 hover:bg-red-700 w-full"
-                          >
-                            {isSelling ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                卖出中...
-                              </>
-                            ) : (
-                              <>
-                                <Zap className="mr-2 h-4 w-4" />
-                                全部卖出
-                              </>
-                            )}
-                          </Button>
+                          <p className="text-gray-500 mb-2">卖出比例</p>
                         </div>
                       </div>
 
                       {/* 快速比例选择 */}
                       <div className="pt-2 border-t border-white/10">
-                        <p className="text-gray-500 text-sm mb-2">部分卖出比例</p>
+                        <p className="text-gray-500 text-sm mb-2">选择卖出比例</p>
                         <div className="flex flex-wrap gap-2">
-                          {[25, 50, 75].map(percentage => (
+                          {[25, 50, 75, 100].map(percentage => (
                             <Button
                               key={percentage}
-                              variant="outline"
+                              variant={sellPercentage === percentage ? "default" : "outline"}
                               size="sm"
-                              onClick={() => handleQuickFlashSell('percentage', percentage)}
-                              disabled={isSelling || !sellForm.tokenAddress}
-                              className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+                              onClick={() => setSellPercentage(percentage)}
+                              disabled={isSelling || selectedPortfolioIds.length === 0}
+                              className={
+                                sellPercentage === percentage
+                                  ? "bg-purple-600 hover:bg-purple-700"
+                                  : "border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+                              }
                             >
-                              卖出 {percentage}%
+                              {percentage}%
                             </Button>
                           ))}
+                        </div>
+                      </div>
+
+                      {/* 执行卖出按钮 */}
+                      {sellPercentage && (
+                        <div className="pt-2 border-t border-white/10">
+                          <Button
+                            onClick={() => handleBatchFlashSell(sellPercentage)}
+                            disabled={isSelling || selectedPortfolioIds.length === 0}
+                            className="bg-red-600 hover:bg-red-700 w-full"
+                          >
+                            {isSelling ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                批量卖出中...
+                              </>
+                            ) : (
+                              <>
+                                <Zap className="mr-2 h-4 w-4" />
+                                批量卖出 {sellPercentage}%
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* 选中的代币列表预览 */}
+                      <div className="pt-2 border-t border-white/10">
+                        <p className="text-gray-500 text-xs mb-2">待卖出代币:</p>
+                        <div className="space-y-1">
+                          {selectedPortfolioIds.map(id => {
+                            const portfolio = portfolios.find(p => p.id === id);
+                            if (!portfolio) return null;
+                            return (
+                              <div key={id} className="flex justify-between text-xs text-gray-400">
+                                <span>{portfolio.tokenSymbol}</span>
+                                <span>
+                                  {sellPercentage === 100
+                                    ? `全部: ${parseFloat(portfolio.amount).toLocaleString()}`
+                                    : `${sellPercentage}%: ${(parseFloat(portfolio.amount) * (sellPercentage! / 100)).toLocaleString()}`
+                                  }
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
                 <p className="text-xs text-gray-500">
-                  💡 提示：选择要卖出的代币后，点击"全部卖出"按钮即可快速执行闪电卖出。交易将通过 DEX（Raydium/PancakeSwap/Uniswap）自动执行。
+                  💡 提示：勾选多个代币后，选择卖出比例，点击"批量卖出"即可快速执行闪电卖出。交易将通过 DEX（Raydium/PancakeSwap/Uniswap）自动执行。
                 </p>
               </CardContent>
             </Card>
