@@ -63,6 +63,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 确保 params 有默认值
+    const safeParams = params || {};
+
     // 验证平台是否为 Bonding Curve 平台
     const validPlatforms = ['pump.fun', 'four.meme', 'raydium', 'uniswap', 'pancakeswap'];
     if (!validPlatforms.includes(platform)) {
@@ -109,27 +112,27 @@ export async function POST(request: NextRequest) {
     // 合并默认参数
     const defaultParams = {
       // 托底买入参数
-      floorPricePercent: params.floorPricePercent || '95',
-      floorBuyAmount: params.floorBuyAmount || '1000',
-      floorMaxBuy: params.floorMaxBuy || '10000',
+      floorPricePercent: safeParams.floorPricePercent || '95',
+      floorBuyAmount: safeParams.floorBuyAmount || '1000',
+      floorMaxBuy: safeParams.floorMaxBuy || '10000',
       floorBought: '0',
 
       // 机器人狙击参数
-      snipeEnabled: params.snipeEnabled || false,
-      snipeDelay: params.snipeDelay || 100,
-      snipeAmount: params.snipeAmount || '500',
-      snipeThreshold: params.snipeThreshold || '0.5',
+      snipeEnabled: safeParams.snipeEnabled || false,
+      snipeDelay: safeParams.snipeDelay || 100,
+      snipeAmount: safeParams.snipeAmount || '500',
+      snipeThreshold: safeParams.snipeThreshold || '0.5',
 
       // 价格稳定参数
-      stabilizationEnabled: params.stabilizationEnabled || false,
-      stabilizationInterval: params.stabilizationInterval || 10,
-      stabilizationAmount: params.stabilizationAmount || '200',
-      stabilizationTargetGrowth: params.stabilizationTargetGrowth || '5',
+      stabilizationEnabled: safeParams.stabilizationEnabled || false,
+      stabilizationInterval: safeParams.stabilizationInterval || 10,
+      stabilizationAmount: safeParams.stabilizationAmount || '200',
+      stabilizationTargetGrowth: safeParams.stabilizationTargetGrowth || '5',
 
       // 防砸盘参数
-      antiDumpEnabled: params.antiDumpEnabled || false,
-      dumpThreshold: params.dumpThreshold || '10000',
-      antiDumpAmount: params.antiDumpAmount || '2000',
+      antiDumpEnabled: safeParams.antiDumpEnabled || false,
+      dumpThreshold: safeParams.dumpThreshold || '10000',
+      antiDumpAmount: safeParams.antiDumpAmount || '2000',
     };
 
     const newStrategy = {

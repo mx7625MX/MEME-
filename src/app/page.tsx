@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 
 import { INFLUENCERS, Influencer, INFLUENCERS_BY_CATEGORY, searchInfluencers } from '@/config/influencers';
+import { MarketMakerManager } from '@/components/MarketMakerManager';
 
 // API 基础路径
 const API_BASE = '/api';
@@ -1093,6 +1094,7 @@ export default function MemeMasterPro() {
             <TabsTrigger value="market">市场监控</TabsTrigger>
             <TabsTrigger value="history">交易历史</TabsTrigger>
             <TabsTrigger value="autotrade">自动交易</TabsTrigger>
+            <TabsTrigger value="market-maker">做市值</TabsTrigger>
           </TabsList>
 
           {/* 仪表盘 */}
@@ -1151,6 +1153,11 @@ export default function MemeMasterPro() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* 做市值策略管理 */}
+          <TabsContent value="market-maker" className="space-y-4">
+            <MarketMakerManager />
           </TabsContent>
 
           {/* 大V分析结果弹窗 */}
@@ -1449,6 +1456,11 @@ export default function MemeMasterPro() {
             </Card>
           </TabsContent>
 
+          {/* 做市值策略管理 */}
+          <TabsContent value="market-maker" className="space-y-4">
+            <MarketMakerManager />
+          </TabsContent>
+
           {/* 大V分析结果弹窗 */}
           {showAnalysisModal && influencerAnalysis && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.9)" }}>
@@ -1671,6 +1683,11 @@ export default function MemeMasterPro() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* 做市值策略管理 */}
+          <TabsContent value="market-maker" className="space-y-4">
+            <MarketMakerManager />
           </TabsContent>
 
           {/* 大V分析结果弹窗 */}
@@ -2170,6 +2187,11 @@ export default function MemeMasterPro() {
             </Card>
           </TabsContent>
 
+          {/* 做市值策略管理 */}
+          <TabsContent value="market-maker" className="space-y-4">
+            <MarketMakerManager />
+          </TabsContent>
+
           {/* 大V分析结果弹窗 */}
           {showAnalysisModal && influencerAnalysis && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.9)" }}>
@@ -2657,6 +2679,11 @@ export default function MemeMasterPro() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* 做市值策略管理 */}
+          <TabsContent value="market-maker" className="space-y-4">
+            <MarketMakerManager />
           </TabsContent>
 
           {/* 大V分析结果弹窗 */}
@@ -3351,6 +3378,11 @@ export default function MemeMasterPro() {
 
           </TabsContent>
 
+          {/* 做市值策略管理 */}
+          <TabsContent value="market-maker" className="space-y-4">
+            <MarketMakerManager />
+          </TabsContent>
+
           {/* 大V分析结果弹窗 */}
           {showAnalysisModal && influencerAnalysis && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.9)" }}>
@@ -3631,6 +3663,11 @@ export default function MemeMasterPro() {
             </Card>
           </TabsContent>
 
+          {/* 做市值策略管理 */}
+          <TabsContent value="market-maker" className="space-y-4">
+            <MarketMakerManager />
+          </TabsContent>
+
           {/* 大V分析结果弹窗 */}
           {showAnalysisModal && influencerAnalysis && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.9)" }}>
@@ -3859,6 +3896,11 @@ export default function MemeMasterPro() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* 做市值策略管理 */}
+          <TabsContent value="market-maker" className="space-y-4">
+            <MarketMakerManager />
           </TabsContent>
 
           {/* 大V分析结果弹窗 */}
@@ -4184,6 +4226,11 @@ export default function MemeMasterPro() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* 做市值策略管理 */}
+          <TabsContent value="market-maker" className="space-y-4">
+            <MarketMakerManager />
           </TabsContent>
 
           {/* 大V分析结果弹窗 */}

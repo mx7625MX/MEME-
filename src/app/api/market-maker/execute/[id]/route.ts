@@ -402,7 +402,13 @@ export async function POST(
   try {
     const db = await getDb();
     const { id } = await context.params;
-    const body = await request.json();
+    let body = {};
+    try {
+      body = await request.json();
+    } catch (e) {
+      // 请求体为空，使用默认空对象
+      body = {};
+    }
 
     // 检查策略是否存在
     const [strategy] = await db.select()

@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
         tokenAddress: transaction.tokenAddress,
         platform,
         detectionType: detection.detectionType,
-        confidence: detection.confidence,
+        confidence: detection.confidence.toString(),
         details: {
           txHash: transaction.metadata?.txHash || '',
           amount: transaction.amount,
