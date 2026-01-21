@@ -31,58 +31,87 @@ const TELEGRAM_API_CONFIG = {
 
 /**
  * 使用联网搜索获取大V的真实内容
+ * 多种搜索策略确保获取到最新内容
  */
 async function fetchFromWebSearch(influencer: any, count: number = 5) {
   try {
     const config = new Config();
     const client = new SearchClient(config);
 
-    // 构建搜索查询，使用大V的handle和关键词
-    const searchQuery = `${influencer.handle} site:twitter.com OR site:x.com ${influencer.keywords?.slice(0, 3).join(' OR ') || ''}`;
+    // 策略1: 直接搜索大V的推文
+    const searchQueries = [
+      // 搜索大V + 关键词
+      `${influencer.name} ${influencer.handle} ${influencer.keywords?.slice(0, 3).join(' ')}`,
+      // 搜索特定话题
+      `${influencer.keywords?.slice(0, 2).join(' ')} 加密货币 币圈`,
+      // 搜索相关币种
+      ...(influencer.keywords?.slice(0, 3).map((k: string) => `${k} 最新消息`) || []),
+    ];
 
-    // 使用高级搜索，限制时间范围为最近1天
-    const response = await client.advancedSearch(searchQuery, {
-      searchType: 'web',
-      count: count * 2, // 多获取一些，然后过滤
-      needContent: true,
-      needUrl: true,
-      timeRange: '1d', // 最近1天
-      needSummary: true,
-    });
+    // 并行执行多个搜索
+    const searchPromises = searchQueries.map(query =>
+      client.advancedSearch(query, {
+        searchType: 'web',
+        count: count,
+        needContent: true,
+        needUrl: true,
+        timeRange: '1d', // 优先获取最近1天的内容
+        needSummary: true,
+      })
+    );
 
-    if (!response.web_items || response.web_items.length === 0) {
-      // 如果没有找到最近1天的内容，尝试扩大时间范围
-      const fallbackResponse = await client.advancedSearch(searchQuery, {
+    const searchResults = await Promise.all(searchPromises);
+
+    // 合并并去重结果
+    const allResults: any[] = [];
+    const seenUrls = new Set();
+
+    for (const results of searchResults) {
+      if (results.web_items) {
+        for (const item of results.web_items) {
+          if (item.url && !seenUrls.has(item.url)) {
+            seenUrls.add(item.url);
+            allResults.push(item);
+          }
+        }
+      }
+    }
+
+    // 如果最近1天的内容不够，扩大时间范围
+    if (allResults.length < count) {
+      const fallbackQuery = `${influencer.name} ${influencer.keywords?.join(' ')}`;
+      const fallbackResponse = await client.advancedSearch(fallbackQuery, {
         searchType: 'web',
         count: count * 2,
         needContent: true,
         needUrl: true,
-        timeRange: '1w', // 最近1周
+        timeRange: '1w', // 扩大到最近1周
         needSummary: true,
       });
 
-      if (!fallbackResponse.web_items || fallbackResponse.web_items.length === 0) {
-        throw new Error('未找到相关内容');
+      if (fallbackResponse.web_items) {
+        for (const item of fallbackResponse.web_items) {
+          if (item.url && !seenUrls.has(item.url)) {
+            seenUrls.add(item.url);
+            allResults.push(item);
+          }
+        }
       }
-
-      return fallbackResponse.web_items.slice(0, count).map((item: any) => ({
-        id: `search-${item.id}`,
-        content: item.content || item.snippet,
-        platform: 'twitter',
-        createdAt: item.publish_time || new Date().toISOString(),
-        url: item.url,
-        source: item.site_name,
-        isSimulated: false,
-      }));
     }
 
-    return response.web_items.slice(0, count).map((item: any) => ({
+    if (allResults.length === 0) {
+      throw new Error('未找到相关内容');
+    }
+
+    // 返回前N条结果
+    return allResults.slice(0, count).map((item: any) => ({
       id: `search-${item.id}`,
-      content: item.content || item.snippet,
-      platform: 'twitter',
+      content: item.content || item.snippet || item.summary || '',
+      platform: 'web',
       createdAt: item.publish_time || new Date().toISOString(),
       url: item.url,
       source: item.site_name,
+      title: item.title,
       isSimulated: false,
     }));
   } catch (error) {
@@ -294,7 +323,7 @@ async function generateSimulatedContent(influencer: any, count: number = 5) {
 /**
  * 对获取的内容进行批量AI情绪分析
  */
-async function analyzeContentSentiment(contents: any[]) {
+async function analyzeContentSentiment(contents: any[], influencer: any) {
   try {
     const db = await getDb();
     const analyses = [];
@@ -303,7 +332,7 @@ async function analyzeContentSentiment(contents: any[]) {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
     for (const content of contents) {
-      // 调用AI情绪分析API
+      // 调用AI情绪分析API，传入 influencerName 以过滤大V名字
       const analysisResponse = await fetch(`${baseUrl}/api/ai/discover`, {
         method: 'POST',
         headers: {
@@ -312,6 +341,7 @@ async function analyzeContentSentiment(contents: any[]) {
         body: JSON.stringify({
           content: content.content,
           platform: content.platform,
+          influencerName: influencer.name, // 传入大V名字进行过滤
         }),
       });
 
@@ -415,7 +445,7 @@ export async function POST(
     }
 
     // 对内容进行情绪分析
-    const analyses = await analyzeContentSentiment(contents);
+    const analyses = await analyzeContentSentiment(contents, influencer);
 
     // 计算整体建议
     const bullishCount = analyses.filter(a => a.analysis.sentiment.sentiment === 'bullish').length;
