@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // 验证必填字段
-    const { walletId, chain, platform, tokenName, tokenSymbol, totalSupply, liquidity, imageUrl, imageKey, bundleBuyEnabled, bundleBuyAmount, bundleBuyTokenSymbol, website, twitter, telegram, discord } = body;
+    const { walletId, chain, platform, tokenName, tokenSymbol, totalSupply, liquidity, imageUrl, imageKey, bundleBuyEnabled, useSpecifiedTokenForBundleBuy, bundleBuyAmount, bundleBuyTokenSymbol, website, twitter, telegram, discord } = body;
 
     if (!walletId || !chain || !platform || !tokenName || !tokenSymbol || !totalSupply) {
       return NextResponse.json(
@@ -58,9 +58,12 @@ export async function POST(request: NextRequest) {
       bundleBuyNativeAmount = bundleBuyAmount || '0.1'; // 默认 0.1 SOL/BNB/ETH
       
       // 确定使用的购买代币符号
-      let buyTokenSymbol = bundleBuyTokenSymbol;
-      if (!buyTokenSymbol || buyTokenSymbol === 'auto') {
-        // 自动选择，根据链决定使用原生代币
+      let buyTokenSymbol;
+      if (useSpecifiedTokenForBundleBuy && bundleBuyTokenSymbol) {
+        // 用户指定了代币，使用用户指定的
+        buyTokenSymbol = bundleBuyTokenSymbol;
+      } else {
+        // 用户没有指定代币，根据链自动选择原生代币
         switch (chain) {
           case 'solana':
             buyTokenSymbol = 'SOL';

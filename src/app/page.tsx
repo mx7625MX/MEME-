@@ -112,6 +112,7 @@ export default function MemeMasterPro() {
     imageKey: '',
     bundleBuyEnabled: true, // 是否启用捆绑买入
     bundleBuyAmount: '0.1', // 默认捆绑买入 0.1 SOL/BNB/ETH
+    useSpecifiedTokenForBundleBuy: false, // 是否使用指定代币进行捆绑买入
     bundleBuyTokenSymbol: '', // 捆绑买入使用的代币，默认不选中
     // 媒体链接
     website: '',
@@ -578,6 +579,7 @@ export default function MemeMasterPro() {
           imageKey: '',
           bundleBuyEnabled: true,
           bundleBuyAmount: '0.1',
+          useSpecifiedTokenForBundleBuy: false,
           bundleBuyTokenSymbol: '',
           website: '',
           twitter: '',
@@ -2883,6 +2885,18 @@ export default function MemeMasterPro() {
                     {/* 捆绑买入配置 - 仅在启用时显示 */}
                     {launchForm.bundleBuyEnabled && (
                       <div className="space-y-3 pt-3 border-t border-white/10">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-gray-400 text-sm">使用指定代币购买</Label>
+                          <input
+                            type="checkbox"
+                            checked={launchForm.useSpecifiedTokenForBundleBuy}
+                            onChange={(e) => setLaunchForm({...launchForm, useSpecifiedTokenForBundleBuy: e.target.checked})}
+                            className="w-4 h-4 rounded border-white/20 bg-black/50 text-purple-600 focus:ring-purple-500"
+                          />
+                        </div>
+                        
+                        {/* 购买代币选择器 - 仅在使用指定代币时显示 */}
+                        {launchForm.useSpecifiedTokenForBundleBuy && (
                         <div className="mb-3">
                           <Label className="text-gray-400 text-sm">购买代币</Label>
                           <select
@@ -2890,47 +2904,19 @@ export default function MemeMasterPro() {
                             value={launchForm.bundleBuyTokenSymbol}
                             onChange={(e) => setLaunchForm({...launchForm, bundleBuyTokenSymbol: e.target.value})}
                           >
-                            {(() => {
-                              const selectedWallet = wallets.find(w => w.id === launchForm.walletId);
-                              if (!selectedWallet) return null;
-                              switch (selectedWallet.chain) {
-                                case 'solana':
-                                  return (
-                                    <>
-                                      <option value="">请选择购买代币</option>
-                                      <option value="USDC">USDC</option>
-                                      <option value="SOL">SOL</option>
-                                      <option value="USDT">USDT</option>
-                                    </>
-                                  );
-                                case 'bsc':
-                                  return (
-                                    <>
-                                      <option value="">请选择购买代币</option>
-                                      <option value="USDC">USDC</option>
-                                      <option value="USDT">USDT</option>
-                                      <option value="BNB">BNB</option>
-                                    </>
-                                  );
-                                case 'eth':
-                                  return (
-                                    <>
-                                      <option value="">请选择购买代币</option>
-                                      <option value="USDC">USDC</option>
-                                      <option value="USDT">USDT</option>
-                                      <option value="ETH">ETH</option>
-                                      <option value="WETH">WETH</option>
-                                    </>
-                                  );
-                                default:
-                                  return null;
-                              }
-                            })()}
+                            <option value="">请选择购买代币</option>
+                            <option value="BNB">BNB</option>
+                            <option value="SOL">SOL</option>
+                            <option value="ETH">ETH</option>
+                            <option value="USDC">USDC</option>
+                            <option value="USDT">USDT</option>
+                            <option value="WETH">WETH</option>
                           </select>
                           <p className="text-xs text-gray-500 mt-1">
                             使用指定代币进行购买
                           </p>
                         </div>
+                        )}
                         
                         <div className="flex items-center gap-3">
                           <Input
