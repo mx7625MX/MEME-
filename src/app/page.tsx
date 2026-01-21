@@ -693,6 +693,71 @@ export default function MemeMasterPro() {
       alert('卖出失败');
     }
   };
+
+  // 快速闪电卖出
+  const handleQuickFlashSell = async (sellType: 'all' | 'percentage' = 'all', percentage?: number) => {
+    if (!sellForm.tokenAddress || !sellForm.walletId) {
+      alert('请先选择要卖出的代币');
+      return;
+    }
+
+    // 找到对应的持仓ID
+    const selectedPortfolio = portfolios.find(p => 
+      p.tokenAddress === sellForm.tokenAddress && 
+      p.walletId === sellForm.walletId &&
+      p.status === 'active'
+    );
+
+    if (!selectedPortfolio) {
+      alert('未找到对应的持仓');
+      return;
+    }
+
+    // 计算卖出数量
+    let sellAmount = sellForm.amount;
+    if (sellType === 'percentage' && percentage) {
+      sellAmount = (parseFloat(sellForm.amount || '0') * (percentage / 100)).toString();
+    }
+
+    if (!confirm(`确定要卖出 ${sellType === 'all' ? '全部' : `${percentage}%`} ${sellForm.tokenSymbol} 吗？\n\n卖出数量: ${parseFloat(sellAmount || '0').toLocaleString()} ${sellForm.tokenSymbol}\n滑点设置: ${sellForm.slippage}%`)) {
+      return;
+    }
+    
+    try {
+      setIsSelling(true);
+      const res = await fetch(`${API_BASE}/portfolios/${selectedPortfolio.id}/sell`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          sellAmount: sellAmount,
+          slippage: parseFloat(sellForm.slippage) || 5
+        })
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        alert(data.data.message);
+        // 重置表单
+        setSellForm({
+          walletId: '',
+          tokenAddress: '',
+          tokenSymbol: '',
+          amount: '',
+          slippage: '5'
+        });
+        loadPortfolios();
+        loadTransactions();
+        loadWallets();
+      } else {
+        alert(data.error);
+      }
+    } catch (error) {
+      console.error('Error quick flash sell:', error);
+      alert('闪电卖出失败');
+    } finally {
+      setIsSelling(false);
+    }
+  };
   
   // 更新持仓（设置利润目标等）
   const handleUpdatePortfolio = async (portfolioId: string, updates: any) => {
@@ -3215,6 +3280,119 @@ export default function MemeMasterPro() {
           
           {/* 闪电卖出 */}
           <TabsContent value="trading" className="space-y-4">
+            {/* 快速闪电卖出 */}
+            <Card className="bg-gradient-to-r from-yellow-900/20 to-orange-900/20 border border-yellow-500/30 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-yellow-400" />
+                  快速闪电卖出
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  选择持有代币，一键快速卖出
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-4">
+                  {/* 代币选择器 */}
+                  <div>
+                    <Label className="text-white mb-2 block">选择要卖出的代币</Label>
+                    <select
+                      className="w-full bg-black/50 border border-white/20 text-white rounded-md px-3 py-2"
+                      value={sellForm.tokenAddress || ''}
+                      onChange={(e) => {
+                        const selectedPortfolio = portfolios.find(p => p.id === e.target.value);
+                        if (selectedPortfolio) {
+                          setSellForm(prev => ({
+                            ...prev,
+                            tokenAddress: selectedPortfolio.tokenAddress,
+                            tokenSymbol: selectedPortfolio.tokenSymbol,
+                            walletId: selectedPortfolio.walletId,
+                            amount: selectedPortfolio.amount
+                          }));
+                        }
+                      }}
+                    >
+                      <option value="">-- 请选择代币 --</option>
+                      {portfolios.filter(p => p.status === 'active').map(portfolio => (
+                        <option key={portfolio.id} value={portfolio.id}>
+                          {portfolio.tokenSymbol} - {portfolio.tokenName || 'Unknown'} ({portfolio.chain.toUpperCase()}) - 持有: {parseFloat(portfolio.amount).toLocaleString()} - 盈亏: {portfolio.profitLossPercent ? `${parseFloat(portfolio.profitLossPercent).toFixed(2)}%` : '-'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 卖出信息显示 */}
+                  {sellForm.tokenAddress && (
+                    <div className="p-4 bg-black/30 rounded-lg border border-white/10 space-y-3">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-gray-500">代币符号</p>
+                          <p className="text-white font-medium">{sellForm.tokenSymbol}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500">当前持有</p>
+                          <p className="text-white font-medium">{parseFloat(sellForm.amount || '0').toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500">滑点设置</p>
+                          <Input
+                            type="number"
+                            className="w-24 h-8 bg-black/50 border-white/10 text-white text-sm"
+                            placeholder="5"
+                            value={sellForm.slippage}
+                            onChange={(e) => setSellForm(prev => ({ ...prev, slippage: e.target.value }))}
+                          />
+                          <span className="text-xs text-gray-500 ml-1">%</span>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 mb-2">快速操作</p>
+                          <Button
+                            onClick={() => handleQuickFlashSell('all')}
+                            disabled={isSelling || !sellForm.tokenAddress}
+                            className="bg-red-600 hover:bg-red-700 w-full"
+                          >
+                            {isSelling ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                卖出中...
+                              </>
+                            ) : (
+                              <>
+                                <Zap className="mr-2 h-4 w-4" />
+                                全部卖出
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* 快速比例选择 */}
+                      <div className="pt-2 border-t border-white/10">
+                        <p className="text-gray-500 text-sm mb-2">部分卖出比例</p>
+                        <div className="flex flex-wrap gap-2">
+                          {[25, 50, 75].map(percentage => (
+                            <Button
+                              key={percentage}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleQuickFlashSell('percentage', percentage)}
+                              disabled={isSelling || !sellForm.tokenAddress}
+                              className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+                            >
+                              卖出 {percentage}%
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500">
+                  💡 提示：选择要卖出的代币后，点击"全部卖出"按钮即可快速执行闪电卖出。交易将通过 DEX（Raydium/PancakeSwap/Uniswap）自动执行。
+                </p>
+              </CardContent>
+            </Card>
+
             {/* 持仓列表 */}
             <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
               <CardHeader>
