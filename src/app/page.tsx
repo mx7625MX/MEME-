@@ -2890,7 +2890,6 @@ export default function MemeMasterPro() {
                             value={launchForm.bundleBuyTokenSymbol}
                             onChange={(e) => setLaunchForm({...launchForm, bundleBuyTokenSymbol: e.target.value})}
                           >
-                            <option value="auto">自动选择（推荐）</option>
                             {(() => {
                               const selectedWallet = wallets.find(w => w.id === launchForm.walletId);
                               if (!selectedWallet) return null;
@@ -2898,26 +2897,26 @@ export default function MemeMasterPro() {
                                 case 'solana':
                                   return (
                                     <>
-                                      <option value="SOL">SOL</option>
                                       <option value="USDC">USDC</option>
+                                      <option value="SOL">SOL</option>
                                       <option value="USDT">USDT</option>
                                     </>
                                   );
                                 case 'bsc':
                                   return (
                                     <>
-                                      <option value="BNB">BNB</option>
                                       <option value="USDC">USDC</option>
                                       <option value="USDT">USDT</option>
+                                      <option value="BNB">BNB</option>
                                     </>
                                   );
                                 case 'eth':
                                   return (
                                     <>
-                                      <option value="ETH">ETH</option>
-                                      <option value="WETH">WETH</option>
                                       <option value="USDC">USDC</option>
                                       <option value="USDT">USDT</option>
+                                      <option value="ETH">ETH</option>
+                                      <option value="WETH">WETH</option>
                                     </>
                                   );
                                 default:
@@ -2926,7 +2925,7 @@ export default function MemeMasterPro() {
                             })()}
                           </select>
                           <p className="text-xs text-gray-500 mt-1">
-                            {launchForm.bundleBuyTokenSymbol === 'auto' ? '自动使用链的原生代币进行购买' : '使用指定代币进行购买'}
+                            使用指定代币进行购买
                           </p>
                         </div>
                         
@@ -2940,19 +2939,7 @@ export default function MemeMasterPro() {
                             value={launchForm.bundleBuyAmount}
                             onChange={(e) => setLaunchForm({...launchForm, bundleBuyAmount: e.target.value})}
                           />
-                          <span className="text-gray-300 whitespace-nowrap">{(() => {
-                            const selectedWallet = wallets.find(w => w.id === launchForm.walletId);
-                            if (!selectedWallet || launchForm.bundleBuyTokenSymbol === 'auto') {
-                              if (!selectedWallet) return 'SOL';
-                              switch (selectedWallet.chain) {
-                                case 'solana': return 'SOL';
-                                case 'bsc': return 'BNB';
-                                case 'eth': return 'ETH';
-                                default: return 'SOL';
-                              }
-                            }
-                            return launchForm.bundleBuyTokenSymbol;
-                          })()}</span>
+                          <span className="text-gray-300 whitespace-nowrap">{launchForm.bundleBuyTokenSymbol || 'USDC'}</span>
                         </div>
                         <p className="text-xs text-gray-500">
                           推荐值：0.1 - 0.5 • 将自动创建持仓并启用闪电卖出监控
