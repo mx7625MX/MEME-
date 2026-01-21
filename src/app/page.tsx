@@ -129,6 +129,7 @@ export default function MemeMasterPro() {
     // 同步闪电卖出配置（与发币同步执行）
     autoFlashSellEnabled: true, // 默认启用同步闪电卖出
     autoFlashSellPercentage: '50', // 默认卖出 50% 的捆绑买入数量
+    autoFlashSellDelay: '0', // 默认立即执行（0秒延迟）
   });
   const [isLaunching, setIsLaunching] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -616,6 +617,7 @@ export default function MemeMasterPro() {
           lockDuration: '7',
           autoFlashSellEnabled: true,
           autoFlashSellPercentage: '50',
+          autoFlashSellDelay: '0',
         });
         loadTransactions();
       } else {
@@ -3057,7 +3059,7 @@ export default function MemeMasterPro() {
                       />
                     </div>
                     <p className="text-xs text-gray-400">
-                      在发币后立即执行闪电卖出，锁定利润，避免后续价格波动风险
+                      在发币后执行闪电卖出，锁定利润，避免后续价格波动风险
                     </p>
                     {launchForm.autoFlashSellEnabled && (
                       <div className="space-y-3 mt-2">
@@ -3077,6 +3079,26 @@ export default function MemeMasterPro() {
                           </div>
                           <p className="text-xs text-gray-500 mt-1">
                             卖出捆绑买入数量的 {launchForm.autoFlashSellPercentage}%，快速锁定利润
+                          </p>
+                        </div>
+                        <div>
+                          <Label className="text-gray-400 text-sm">延迟时间</Label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Input
+                              className="bg-black/50 border-white/10 text-white"
+                              placeholder="0"
+                              type="number"
+                              min="0"
+                              value={launchForm.autoFlashSellDelay}
+                              onChange={(e) => setLaunchForm({...launchForm, autoFlashSellDelay: e.target.value})}
+                            />
+                            <span className="text-gray-300 text-sm">秒</span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {launchForm.autoFlashSellDelay === '0' 
+                              ? '立即执行：在发币完成后立即执行闪电卖出'
+                              : `延迟执行：在发币完成后等待 ${launchForm.autoFlashSellDelay} 秒再执行闪电卖出`
+                            }
                           </p>
                         </div>
                       </div>

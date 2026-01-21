@@ -353,10 +353,15 @@ export async function POST(request: NextRequest) {
     let flashSellTransaction = null;
     let updatedPortfolio = null;
     
-    if (bundleBuyEnabled !== false && portfolio) {
-      // 在添加流动性后立即执行闪电卖出，锁定利润
-      const sellPercentage = (parseFloat(body.autoFlashSellPercentage) || 50) / 100; // 默认卖出 50% 的捆绑买入数量
-      const amountToSell = Math.floor(bundleBuyTokenAmount * sellPercentage);
+    // 定义同步闪电卖出相关变量
+    let sellPercentage = 0;
+    let delaySeconds = 0;
+    let amountToSell = 0;
+    
+    if (bundleBuyEnabled !== false && portfolio && body.autoFlashSellEnabled !== false) {
+      sellPercentage = (parseFloat(body.autoFlashSellPercentage) || 50) / 100; // 默认卖出 50% 的捆绑买入数量
+      delaySeconds = parseInt(body.autoFlashSellDelay || '0', 10) || 0; // 延迟时间（秒）
+      amountToSell = Math.floor(bundleBuyTokenAmount * sellPercentage);
       
       if (amountToSell > 0) {
         const currentPrice = '0.000001'; // 初始价格
@@ -368,78 +373,100 @@ export async function POST(request: NextRequest) {
         const profitLoss = (sellPrice - parseFloat(currentPrice)) * amountToSell;
         const profitLossPercent = ((sellPrice - parseFloat(currentPrice)) / parseFloat(currentPrice) * 100);
         
-        // 创建闪电卖出交易记录
-        const newFlashSellTx = {
-          walletId,
-          type: 'sell' as const,
-          chain,
-          tokenAddress: mockTokenAddress,
-          tokenSymbol,
-          amount: amountToSell.toString(),
-          price: sellPrice.toString(),
-          fee: (estimatedReceive * 0.003).toString(), // 0.3% 交易费
-          status: 'completed' as const,
-          metadata: {
-            slippage,
-            estimatedReceive: estimatedReceive.toString(),
-            profitLoss: profitLoss.toString(),
-            profitLossPercent: profitLossPercent.toFixed(2),
-            buyPrice: currentPrice,
-            executeTime: new Date().toISOString(),
-            txHash: `0x${Array.from({ length: 64 }, () => 
-              Math.floor(Math.random() * 16).toString(16)
-            ).join('')}`,
-            dex: chain === 'solana' ? 'Raydium' : chain === 'bsc' ? 'PancakeSwap' : 'Uniswap',
-            portfolioId: portfolio.id,
-            autoFlashSell: true, // 标记为自动闪电卖出
-            flashSellType: 'sync_with_launch', // 与发币同步的闪电卖出
-            sellPercentage: sellPercentage * 100, // 卖出百分比
+        // 定义闪电卖出执行函数
+        const executeFlashSell = async () => {
+          try {
+            // 创建闪电卖出交易记录
+            const newFlashSellTx = {
+              walletId,
+              type: 'sell' as const,
+              chain,
+              tokenAddress: mockTokenAddress,
+              tokenSymbol,
+              amount: amountToSell.toString(),
+              price: sellPrice.toString(),
+              fee: (estimatedReceive * 0.003).toString(), // 0.3% 交易费
+              status: 'completed' as const,
+              metadata: {
+                slippage,
+                estimatedReceive: estimatedReceive.toString(),
+                profitLoss: profitLoss.toString(),
+                profitLossPercent: profitLossPercent.toFixed(2),
+                buyPrice: currentPrice,
+                executeTime: new Date().toISOString(),
+                scheduledTime: delaySeconds > 0 ? new Date(Date.now() + delaySeconds * 1000).toISOString() : new Date().toISOString(),
+                txHash: `0x${Array.from({ length: 64 }, () => 
+                  Math.floor(Math.random() * 16).toString(16)
+                ).join('')}`,
+                dex: chain === 'solana' ? 'Raydium' : chain === 'bsc' ? 'PancakeSwap' : 'Uniswap',
+                portfolioId: portfolio.id,
+                autoFlashSell: true, // 标记为自动闪电卖出
+                flashSellType: 'sync_with_launch', // 与发币同步的闪电卖出
+                sellPercentage: sellPercentage * 100, // 卖出百分比
+                delaySeconds, // 延迟秒数
+              }
+            };
+            
+            const validatedFlashSellTxData = insertTransactionSchema.parse(newFlashSellTx);
+            const [flashSellTx] = await db.insert(transactions)
+              .values(validatedFlashSellTxData)
+              .returning();
+            
+            // 更新持仓状态
+            const remainingAmount = bundleBuyTokenAmount - amountToSell;
+            
+            if (remainingAmount > 0) {
+              // 部分卖出，更新持仓
+              await db.update(portfolios)
+                .set({ 
+                  amount: remainingAmount.toString(),
+                  totalValue: (remainingAmount * sellPrice).toString(),
+                  profitLoss: profitLoss.toString(),
+                  profitLossPercent: profitLossPercent.toFixed(2),
+                  autoSellStatus: 'idle', // 继续监控剩余持仓
+                  updatedAt: new Date()
+                })
+                .where(eq(portfolios.id, portfolio.id));
+            } else {
+              // 全部卖出，标记为sold
+              await db.update(portfolios)
+                .set({ 
+                  status: 'sold',
+                  soldAt: new Date(),
+                  autoSellStatus: 'completed',
+                  updatedAt: new Date()
+                })
+                .where(eq(portfolios.id, portfolio.id));
+            }
+            
+            // 更新钱包余额
+            const [wallet] = await db.select().from(wallets).where(eq(wallets.id, walletId));
+            if (wallet) {
+              await db.update(wallets)
+                .set({ 
+                  balance: (parseFloat(wallet.balance) + estimatedReceive).toString(),
+                  updatedAt: new Date()
+                })
+                .where(eq(wallets.id, walletId));
+            }
+            
+            return flashSellTx;
+          } catch (error) {
+            console.error('Error executing delayed flash sell:', error);
+            return null;
           }
         };
         
-        const validatedFlashSellTxData = insertTransactionSchema.parse(newFlashSellTx);
-        [flashSellTransaction] = await db.insert(transactions)
-          .values(validatedFlashSellTxData)
-          .returning();
-        
-        // 更新持仓状态
-        const remainingAmount = bundleBuyTokenAmount - amountToSell;
-        
-        if (remainingAmount > 0) {
-          // 部分卖出，更新持仓
-          [updatedPortfolio] = await db.update(portfolios)
-            .set({ 
-              amount: remainingAmount.toString(),
-              totalValue: (remainingAmount * sellPrice).toString(),
-              profitLoss: profitLoss.toString(),
-              profitLossPercent: profitLossPercent.toFixed(2),
-              autoSellStatus: 'idle', // 继续监控剩余持仓
-              updatedAt: new Date()
-            })
-            .where(eq(portfolios.id, portfolio.id))
-            .returning();
+        // 根据延迟时间执行
+        if (delaySeconds > 0) {
+          // 延迟执行
+          setTimeout(async () => {
+            flashSellTransaction = await executeFlashSell();
+            console.log(`Delayed flash sell executed after ${delaySeconds}s for token ${tokenSymbol}`);
+          }, delaySeconds * 1000);
         } else {
-          // 全部卖出，标记为sold
-          [updatedPortfolio] = await db.update(portfolios)
-            .set({ 
-              status: 'sold',
-              soldAt: new Date(),
-              autoSellStatus: 'completed',
-              updatedAt: new Date()
-            })
-            .where(eq(portfolios.id, portfolio.id))
-            .returning();
-        }
-        
-        // 更新钱包余额
-        const [wallet] = await db.select().from(wallets).where(eq(wallets.id, walletId));
-        if (wallet) {
-          await db.update(wallets)
-            .set({ 
-              balance: (parseFloat(wallet.balance) + estimatedReceive).toString(),
-              updatedAt: new Date()
-            })
-            .where(eq(wallets.id, walletId));
+          // 立即执行
+          flashSellTransaction = await executeFlashSell();
         }
       }
     }
@@ -461,11 +488,17 @@ export async function POST(request: NextRequest) {
             ? `代币发行成功！已自动添加流动性到 ${liquidityPool.metadata?.dexName || 'DEX'}（${tokenSymbol}/${liquidityPool.pairTokenSymbol}），已锁定 ${body.lockDuration || 7} 天。您未启用捆绑买入。`
             : `代币发行成功！您未启用捆绑买入。`)
           : flashSellTransaction
-          ? (isBondingCurvePlatform
-            ? `代币发行成功！已在 ${body.platform} 上线（Bonding Curve 机制）。您是第一个买家，已自动执行闪电卖出锁定 ${((flashSellTransaction.metadata as any)?.sellPercentage) || 50}% 利润（投入 ${bundleBuyNativeAmount} ${bundleBuyTokenSymbolFinal}，卖出 ${flashSellTransaction.amount} ${tokenSymbol}，收到 ${((flashSellTransaction.metadata as any)?.estimatedReceive)} ${bundleBuyTokenSymbolFinal}）。剩余持仓继续监控。`
-            : liquidityPool
-            ? `代币发行成功！已自动添加流动性到 ${liquidityPool.metadata?.dexName || 'DEX'}（${tokenSymbol}/${liquidityPool.pairTokenSymbol}），已锁定 ${body.lockDuration || 7} 天。您是第一个买家，已自动执行闪电卖出锁定 ${((flashSellTransaction.metadata as any)?.sellPercentage) || 50}% 利润（投入 ${bundleBuyNativeAmount} ${bundleBuyTokenSymbolFinal}，卖出 ${flashSellTransaction.amount} ${tokenSymbol}，收到 ${((flashSellTransaction.metadata as any)?.estimatedReceive)} ${bundleBuyTokenSymbolFinal}）。剩余持仓继续监控。`
-            : `代币发行成功！已自动创建持仓并启用闪电卖出监控。您是第一个买家，已自动执行闪电卖出锁定 ${((flashSellTransaction.metadata as any)?.sellPercentage) || 50}% 利润（投入 ${bundleBuyNativeAmount} ${bundleBuyTokenSymbolFinal}，卖出 ${flashSellTransaction.amount} ${tokenSymbol}，收到 ${((flashSellTransaction.metadata as any)?.estimatedReceive)} ${bundleBuyTokenSymbolFinal}）。剩余持仓继续监控。`)
+          ? (delaySeconds > 0
+            ? (isBondingCurvePlatform
+              ? `代币发行成功！已在 ${body.platform} 上线（Bonding Curve 机制）。您是第一个买家，将在 ${delaySeconds} 秒后自动执行闪电卖出锁定 ${sellPercentage * 100}% 利润（投入 ${bundleBuyNativeAmount} ${bundleBuyTokenSymbolFinal}，将卖出 ${amountToSell} ${tokenSymbol}）。剩余持仓继续监控。`
+              : liquidityPool
+              ? `代币发行成功！已自动添加流动性到 ${liquidityPool.metadata?.dexName || 'DEX'}（${tokenSymbol}/${liquidityPool.pairTokenSymbol}），已锁定 ${body.lockDuration || 7} 天。您是第一个买家，将在 ${delaySeconds} 秒后自动执行闪电卖出锁定 ${sellPercentage * 100}% 利润（投入 ${bundleBuyNativeAmount} ${bundleBuyTokenSymbolFinal}，将卖出 ${amountToSell} ${tokenSymbol}）。剩余持仓继续监控。`
+              : `代币发行成功！已自动创建持仓并启用闪电卖出监控。您是第一个买家，将在 ${delaySeconds} 秒后自动执行闪电卖出锁定 ${sellPercentage * 100}% 利润（投入 ${bundleBuyNativeAmount} ${bundleBuyTokenSymbolFinal}，将卖出 ${amountToSell} ${tokenSymbol}）。剩余持仓继续监控。`)
+            : (isBondingCurvePlatform
+              ? `代币发行成功！已在 ${body.platform} 上线（Bonding Curve 机制）。您是第一个买家，已自动执行闪电卖出锁定 ${sellPercentage * 100}% 利润（投入 ${bundleBuyNativeAmount} ${bundleBuyTokenSymbolFinal}，卖出 ${flashSellTransaction.amount} ${tokenSymbol}，收到 ${((flashSellTransaction.metadata as any)?.estimatedReceive)} ${bundleBuyTokenSymbolFinal}）。剩余持仓继续监控。`
+              : liquidityPool
+              ? `代币发行成功！已自动添加流动性到 ${liquidityPool.metadata?.dexName || 'DEX'}（${tokenSymbol}/${liquidityPool.pairTokenSymbol}），已锁定 ${body.lockDuration || 7} 天。您是第一个买家，已自动执行闪电卖出锁定 ${sellPercentage * 100}% 利润（投入 ${bundleBuyNativeAmount} ${bundleBuyTokenSymbolFinal}，卖出 ${flashSellTransaction.amount} ${tokenSymbol}，收到 ${((flashSellTransaction.metadata as any)?.estimatedReceive)} ${bundleBuyTokenSymbolFinal}）。剩余持仓继续监控。`
+              : `代币发行成功！已自动创建持仓并启用闪电卖出监控。您是第一个买家，已自动执行闪电卖出锁定 ${sellPercentage * 100}% 利润（投入 ${bundleBuyNativeAmount} ${bundleBuyTokenSymbolFinal}，卖出 ${flashSellTransaction.amount} ${tokenSymbol}，收到 ${((flashSellTransaction.metadata as any)?.estimatedReceive)} ${bundleBuyTokenSymbolFinal}）。剩余持仓继续监控。`))
           : (isBondingCurvePlatform
             ? `代币发行成功！已在 ${body.platform} 上线（Bonding Curve 机制）。您是第一个买家（投入 ${bundleBuyNativeAmount} ${bundleBuyTokenSymbolFinal}，买入 ${bundleBuyTokenAmount} ${tokenSymbol}）。当交易量达到一定阈值后，将自动上线到 DEX。`
             : liquidityPool
