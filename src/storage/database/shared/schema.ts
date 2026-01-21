@@ -96,6 +96,10 @@ export const tokens = pgTable(
     priceChange24h: decimal("price_change_24h", { precision: 10, scale: 2 }),
     volume24h: decimal("volume_24h", { precision: 30, scale: 18 }),
     isHot: boolean("is_hot").default(false).notNull(),
+    website: varchar("website", { length: 256 }),
+    twitter: varchar("twitter", { length: 256 }),
+    telegram: varchar("telegram", { length: 256 }),
+    discord: varchar("discord", { length: 256 }),
     metadata: jsonb("metadata"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()

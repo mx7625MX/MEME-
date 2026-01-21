@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // 验证必填字段
-    const { walletId, chain, platform, tokenName, tokenSymbol, totalSupply, liquidity, imageUrl, imageKey, bundleBuyAmount } = body;
+    const { walletId, chain, platform, tokenName, tokenSymbol, totalSupply, liquidity, imageUrl, imageKey, bundleBuyAmount, website, twitter, telegram, discord } = body;
 
     if (!walletId || !chain || !platform || !tokenName || !tokenSymbol || !totalSupply) {
       return NextResponse.json(
@@ -84,6 +84,10 @@ export async function POST(request: NextRequest) {
       liquidity: liquidity ? liquidity.toString() : '0',
       price: '0.000001',
       isHot: false,
+      website: website || null,
+      twitter: twitter || null,
+      telegram: telegram || null,
+      discord: discord || null,
       metadata: tokenMetadata
     };
 

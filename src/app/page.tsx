@@ -111,6 +111,11 @@ export default function MemeMasterPro() {
     imageUrl: '',
     imageKey: '',
     bundleBuyAmount: '0.1', // 默认捆绑买入 0.1 SOL/BNB/ETH
+    // 媒体链接
+    website: '',
+    twitter: '',
+    telegram: '',
+    discord: '',
     // 流动性配置（做市值）- 仅适用于 AMM DEX（Raydium、Uniswap、PancakeSwap）
     addLiquidity: true, // 默认开启
     liquidityTokenPercent: '50', // 默认使用 50% 供应量
@@ -570,6 +575,10 @@ export default function MemeMasterPro() {
           imageUrl: '',
           imageKey: '',
           bundleBuyAmount: '0.1',
+          website: '',
+          twitter: '',
+          telegram: '',
+          discord: '',
           addLiquidity: true,
           liquidityTokenPercent: '50',
           pairTokenSymbol: 'auto',
@@ -2687,6 +2696,47 @@ export default function MemeMasterPro() {
                       value={launchForm.liquidity}
                       onChange={(e) => setLaunchForm({...launchForm, liquidity: e.target.value})}
                     />
+                  </div>
+                  
+                  {/* 媒体链接 */}
+                  <div className="space-y-3 pt-3 border-t border-white/10">
+                    <Label className="text-gray-300 font-semibold">媒体链接 (可选)</Label>
+                    <div>
+                      <Label className="text-gray-400 text-sm">网站</Label>
+                      <Input
+                        className="mt-1 bg-black/50 border-white/10 text-white"
+                        placeholder="https://your-website.com"
+                        value={launchForm.website}
+                        onChange={(e) => setLaunchForm({...launchForm, website: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-gray-400 text-sm">Twitter</Label>
+                      <Input
+                        className="mt-1 bg-black/50 border-white/10 text-white"
+                        placeholder="https://twitter.com/yourhandle"
+                        value={launchForm.twitter}
+                        onChange={(e) => setLaunchForm({...launchForm, twitter: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-gray-400 text-sm">Telegram</Label>
+                      <Input
+                        className="mt-1 bg-black/50 border-white/10 text-white"
+                        placeholder="https://t.me/yourchannel"
+                        value={launchForm.telegram}
+                        onChange={(e) => setLaunchForm({...launchForm, telegram: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-gray-400 text-sm">Discord</Label>
+                      <Input
+                        className="mt-1 bg-black/50 border-white/10 text-white"
+                        placeholder="https://discord.gg/yourinvite"
+                        value={launchForm.discord}
+                        onChange={(e) => setLaunchForm({...launchForm, discord: e.target.value})}
+                      />
+                    </div>
                   </div>
                   
                   {/* 流动性配置（做市值）- 仅适用于 AMM DEX */}
