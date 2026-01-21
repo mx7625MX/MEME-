@@ -85,6 +85,15 @@ export default function MemeMasterPro() {
   const [selectedChain, setSelectedChain] = useState('solana');
   const [isCreatingWallet, setIsCreatingWallet] = useState('');
   
+  // 导入钱包相关状态
+  const [showImportWallet, setShowImportWallet] = useState(false);
+  const [importWalletName, setImportWalletName] = useState('');
+  const [importChain, setImportChain] = useState('solana');
+  const [importType, setImportType] = useState<'mnemonic' | 'privateKey'>('mnemonic');
+  const [importMnemonic, setImportMnemonic] = useState('');
+  const [importPrivateKey, setImportPrivateKey] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+  
   // 智能发现相关状态
   const [discoverContent, setDiscoverContent] = useState('');
   const [discoverResult, setDiscoverResult] = useState<any>(null);
@@ -316,11 +325,70 @@ export default function MemeMasterPro() {
         setNewWalletName('');
         loadWallets();
         loadStats();
+      } else {
+        alert(data.error || '创建失败');
       }
     } catch (error) {
       console.error('Error creating wallet:', error);
+      alert('创建失败');
     } finally {
       setIsCreatingWallet('');
+    }
+  };
+
+  // 导入钱包
+  const handleImportWallet = async () => {
+    if (!importWalletName) {
+      alert('请输入钱包名称');
+      return;
+    }
+
+    const importData: any = {
+      name: importWalletName,
+      chain: importChain,
+      importType: importType
+    };
+
+    if (importType === 'mnemonic') {
+      if (!importMnemonic || importMnemonic.trim() === '') {
+        alert('请输入助记词');
+        return;
+      }
+      importData.mnemonic = importMnemonic.trim();
+    } else {
+      if (!importPrivateKey || importPrivateKey.trim() === '') {
+        alert('请输入私钥');
+        return;
+      }
+      importData.privateKey = importPrivateKey.trim();
+    }
+
+    try {
+      setIsImporting(true);
+      const res = await fetch(`${API_BASE}/wallets/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(importData)
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        // 清空表单
+        setImportWalletName('');
+        setImportMnemonic('');
+        setImportPrivateKey('');
+        setShowImportWallet(false);
+        loadWallets();
+        loadStats();
+        alert('钱包导入成功！');
+      } else {
+        alert(data.error || '导入失败');
+      }
+    } catch (error) {
+      console.error('Error importing wallet:', error);
+      alert('导入失败');
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -1342,54 +1410,168 @@ export default function MemeMasterPro() {
               <CardHeader>
                 <CardTitle className="text-white">钱包管理</CardTitle>
                 <CardDescription className="text-gray-400">
-                  管理多链钱包（Solana、BSC、ETH）- 支持创建新钱包
+                  管理多链钱包（Solana、BSC、ETH）- 支持创建或导入钱包
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
-                  <div>
-                    <Label className="text-gray-400">钱包名称</Label>
-                    <Input 
-                      className="mt-1 bg-black/50 border-white/10 text-white"
-                      placeholder="我的 Solana 钱包"
-                      value={newWalletName}
-                      onChange={(e) => setNewWalletName(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-gray-400">选择链</Label>
-                    <div className="flex gap-2 mt-1">
-                      {['solana', 'bsc', 'eth'].map((chain) => (
-                        <Button
-                          key={chain}
-                          variant={selectedChain === chain ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setSelectedChain(chain)}
-                          className={selectedChain === chain ? 'bg-purple-600 hover:bg-purple-700' : 'border-white/20 text-gray-300'}
-                        >
-                          {chain.toUpperCase()}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                  <Button 
-                    className="w-full bg-purple-600 hover:bg-purple-700"
-                    onClick={handleCreateWallet}
-                    disabled={isCreatingWallet === 'creating'}
+                {/* 创建/导入钱包切换按钮 */}
+                <div className="flex gap-2 mb-4">
+                  <Button
+                    variant={!showImportWallet ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setShowImportWallet(false)}
+                    className={!showImportWallet ? 'bg-purple-600 hover:bg-purple-700' : 'border-white/20 text-gray-300'}
                   >
-                    {isCreatingWallet === 'creating' ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        创建中...
-                      </>
-                    ) : (
-                      <>
-                        <Wallet className="mr-2 h-4 w-4" />
-                        创建新钱包
-                      </>
-                    )}
+                    <Plus className="mr-2 h-4 w-4" />
+                    创建新钱包
+                  </Button>
+                  <Button
+                    variant={showImportWallet ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setShowImportWallet(true)}
+                    className={showImportWallet ? 'bg-purple-600 hover:bg-purple-700' : 'border-white/20 text-gray-300'}
+                  >
+                    <Wallet className="mr-2 h-4 w-4" />
+                    导入钱包
                   </Button>
                 </div>
+
+                {!showImportWallet ? (
+                  // 创建钱包表单
+                  <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                    <div>
+                      <Label className="text-gray-400">钱包名称</Label>
+                      <Input 
+                        className="mt-1 bg-black/50 border-white/10 text-white"
+                        placeholder="我的 Solana 钱包"
+                        value={newWalletName}
+                        onChange={(e) => setNewWalletName(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-gray-400">选择链</Label>
+                      <div className="flex gap-2 mt-1">
+                        {['solana', 'bsc', 'eth'].map((chain) => (
+                          <Button
+                            key={chain}
+                            variant={selectedChain === chain ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setSelectedChain(chain)}
+                            className={selectedChain === chain ? 'bg-purple-600 hover:bg-purple-700' : 'border-white/20 text-gray-300'}
+                          >
+                            {chain.toUpperCase()}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    <Button 
+                      className="w-full bg-purple-600 hover:bg-purple-700"
+                      onClick={handleCreateWallet}
+                      disabled={isCreatingWallet === 'creating'}
+                    >
+                      {isCreatingWallet === 'creating' ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          创建中...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="mr-2 h-4 w-4" />
+                          创建新钱包
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                ) : (
+                  // 导入钱包表单
+                  <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                    <div>
+                      <Label className="text-gray-400">钱包名称</Label>
+                      <Input 
+                        className="mt-1 bg-black/50 border-white/10 text-white"
+                        placeholder="我的导入钱包"
+                        value={importWalletName}
+                        onChange={(e) => setImportWalletName(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-gray-400">选择链</Label>
+                      <div className="flex gap-2 mt-1">
+                        {['solana', 'bsc', 'eth'].map((chain) => (
+                          <Button
+                            key={chain}
+                            variant={importChain === chain ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setImportChain(chain)}
+                            className={importChain === chain ? 'bg-purple-600 hover:bg-purple-700' : 'border-white/20 text-gray-300'}
+                          >
+                            {chain.toUpperCase()}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-gray-400">导入方式</Label>
+                      <div className="flex gap-2 mt-1">
+                        <Button
+                          variant={importType === 'mnemonic' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setImportType('mnemonic')}
+                          className={importType === 'mnemonic' ? 'bg-purple-600 hover:bg-purple-700' : 'border-white/20 text-gray-300'}
+                        >
+                          助记词
+                        </Button>
+                        <Button
+                          variant={importType === 'privateKey' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setImportType('privateKey')}
+                          className={importType === 'privateKey' ? 'bg-purple-600 hover:bg-purple-700' : 'border-white/20 text-gray-300'}
+                        >
+                          私钥
+                        </Button>
+                      </div>
+                    </div>
+                    {importType === 'mnemonic' ? (
+                      <div>
+                        <Label className="text-gray-400">助记词（12 或 24 个单词，用空格分隔）</Label>
+                        <textarea
+                          className="mt-1 w-full bg-black/50 border-white/10 text-white rounded-md p-3 text-sm min-h-[100px] resize-y"
+                          placeholder="word1 word2 word3 ..."
+                          value={importMnemonic}
+                          onChange={(e) => setImportMnemonic(e.target.value)}
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <Label className="text-gray-400">私钥</Label>
+                        <Input 
+                          className="mt-1 bg-black/50 border-white/10 text-white"
+                          placeholder="输入您的私钥"
+                          type="password"
+                          value={importPrivateKey}
+                          onChange={(e) => setImportPrivateKey(e.target.value)}
+                        />
+                      </div>
+                    )}
+                    <Button 
+                      className="w-full bg-purple-600 hover:bg-purple-700"
+                      onClick={handleImportWallet}
+                      disabled={isImporting}
+                    >
+                      {isImporting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          导入中...
+                        </>
+                      ) : (
+                        <>
+                          <Wallet className="mr-2 h-4 w-4" />
+                          导入钱包
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
                 
                 <div className="space-y-3">
                   <h3 className="text-white font-semibold">我的钱包</h3>
