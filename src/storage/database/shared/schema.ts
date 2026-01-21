@@ -311,6 +311,116 @@ export const liquidityPools = pgTable(
 );
 
 // ============================================================================
+// 自动做市值策略表（用于 Bonding Curve 内盘阶段）
+// ============================================================================
+export const marketMakerStrategies = pgTable(
+  "market_maker_strategies",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    name: varchar("name", { length: 128 }).notNull(), // 策略名称
+    walletId: varchar("wallet_id", { length: 36 }).notNull().references(() => wallets.id), // 执行策略的钱包
+    tokenAddress: varchar("token_address", { length: 128 }).notNull(), // 目标代币地址
+    tokenSymbol: varchar("token_symbol", { length: 32 }).notNull(), // 代币符号
+    platform: varchar("platform", { length: 32 }).notNull(), // pump.fun, four.meme
+    strategyType: varchar("strategy_type", { length: 32 }).notNull(), // price_floor, bot_snipe, price_stabilization, anti_dump
+    isEnabled: boolean("is_enabled").notNull().default(true), // 是否启用
+    status: varchar("status", { length: 32 }).notNull().default("idle"), // idle, running, paused, stopped
+    // 策略参数
+    params: jsonb("params").notNull().$type<Record<string, any>>().default({
+      // 托底买入参数
+      floorPricePercent: "95", // 价格下限（相对于当前市价的百分比）
+      floorBuyAmount: "1000", // 每次托底买入数量
+      floorMaxBuy: "10000", // 最大托底买入总量
+      floorBought: "0", // 已买入数量
+
+      // 机器人狙击参数
+      snipeEnabled: false, // 是否启用狙击
+      snipeDelay: 100, // 狙击延迟（毫秒）
+      snipeAmount: "500", // 每次狙击买入数量
+      snipeThreshold: "0.5", // 大额买入阈值（自动触发狙击，单位：SOL）
+
+      // 价格稳定参数
+      stabilizationEnabled: false, // 是否启用价格稳定
+      stabilizationInterval: 10, // 买入间隔（秒）
+      stabilizationAmount: "200", // 每次买入数量
+      stabilizationTargetGrowth: "5", // 目标增长率（每分钟）
+
+      // 防砸盘参数
+      antiDumpEnabled: false, // 是否启用防砸盘
+      dumpThreshold: "10000", // 大额卖出阈值
+      antiDumpAmount: "2000", // 反制买入数量
+    }),
+    // 执行统计
+    totalBuys: integer("total_buys").notNull().default(0), // 总买入次数
+    totalBuyAmount: decimal("total_buy_amount", { precision: 30, scale: 18 }).notNull().default("0"), // 总买入数量
+    totalSpent: decimal("total_spent", { precision: 30, scale: 18 }).notNull().default("0"), // 总花费
+    // 风险控制
+    maxSpend: decimal("max_spend", { precision: 30, scale: 18 }).notNull().default("100"), // 最大花费限制
+    stopLossPercent: decimal("stop_loss_percent", { precision: 10, scale: 2 }).notNull().default("50"), // 止损百分比
+    // 时间控制
+    startAt: timestamp("start_at", { withTimezone: true }), // 开始时间
+    endAt: timestamp("end_at", { withTimezone: true }), // 结束时间
+    lastExecutedAt: timestamp("last_executed_at", { withTimezone: true }), // 最后执行时间
+    nextExecuteAt: timestamp("next_execute_at", { withTimezone: true }), // 下次执行时间
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    metadata: jsonb("metadata").$type<Record<string, any>>().default({}),
+  },
+  (table) => ({
+    walletIdx: index("mm_strategies_wallet_idx").on(table.walletId),
+    tokenIdx: index("mm_strategies_token_idx").on(table.tokenAddress),
+    platformIdx: index("mm_strategies_platform_idx").on(table.platform),
+    statusIdx: index("mm_strategies_status_idx").on(table.status),
+  })
+);
+
+// ============================================================================
+// 机器人检测日志表
+// ============================================================================
+export const botDetectionLogs = pgTable(
+  "bot_detection_logs",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    walletAddress: varchar("wallet_address", { length: 128 }).notNull(), // 机器人钱包地址
+    tokenAddress: varchar("token_address", { length: 128 }).notNull(), // 相关代币地址
+    platform: varchar("platform", { length: 32 }).notNull(), // pump.fun, four.meme
+    detectionType: varchar("detection_type", { length: 32 }).notNull(), // rapid_buy, large_buy, dump, pattern
+    confidence: decimal("confidence", { precision: 5, scale: 2 }).notNull(), // 检测置信度 (0-100)
+    details: jsonb("details").notNull().$type<Record<string, any>>().default({
+      // 交易详情
+      txHash: "",
+      amount: "0",
+      price: "0",
+      timestamp: "",
+      // 检测详情
+      reason: "",
+      behavior: "", // sniping, scalping, dumping
+      previousActions: [], // 历史行为记录
+    }),
+    actionTaken: varchar("action_taken", { length: 32 }).notNull(), // none, snipe_counter, blacklist, notify
+    strategyId: varchar("strategy_id", { length: 36 }), // 关联的策略 ID
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    walletIdx: index("bot_logs_wallet_idx").on(table.walletAddress),
+    tokenIdx: index("bot_logs_token_idx").on(table.tokenAddress),
+    platformIdx: index("bot_logs_platform_idx").on(table.platform),
+    detectionTypeIdx: index("bot_logs_detection_type_idx").on(table.detectionType),
+    strategyIdx: index("bot_logs_strategy_idx").on(table.strategyId),
+  })
+);
+
+// ============================================================================
 // 审计日志表
 // ============================================================================
 export const auditLogs = pgTable(
@@ -577,6 +687,50 @@ export const updateLiquidityPoolSchema = createCoercedInsertSchema(liquidityPool
   })
   .partial();
 
+// Market Maker Strategy schemas
+export const insertMarketMakerStrategySchema = createCoercedInsertSchema(marketMakerStrategies).pick({
+  name: true,
+  walletId: true,
+  tokenAddress: true,
+  tokenSymbol: true,
+  platform: true,
+  strategyType: true,
+  isEnabled: true,
+  params: true,
+  maxSpend: true,
+  stopLossPercent: true,
+  startAt: true,
+  endAt: true,
+});
+
+export const updateMarketMakerStrategySchema = createCoercedInsertSchema(marketMakerStrategies)
+  .pick({
+    name: true,
+    isEnabled: true,
+    status: true,
+    params: true,
+    maxSpend: true,
+    stopLossPercent: true,
+    startAt: true,
+    endAt: true,
+    lastExecutedAt: true,
+    nextExecuteAt: true,
+    metadata: true,
+  })
+  .partial();
+
+// Bot Detection Log schemas
+export const insertBotDetectionLogSchema = createCoercedInsertSchema(botDetectionLogs).pick({
+  walletAddress: true,
+  tokenAddress: true,
+  platform: true,
+  detectionType: true,
+  confidence: true,
+  details: true,
+  actionTaken: true,
+  strategyId: true,
+});
+
 // Audit Logs schemas
 export const insertAuditLogSchema = createCoercedInsertSchema(auditLogs).pick({
   event: true,
@@ -621,6 +775,13 @@ export type UpdateSetting = z.infer<typeof updateSettingSchema>;
 export type LiquidityPool = typeof liquidityPools.$inferSelect;
 export type InsertLiquidityPool = z.infer<typeof insertLiquidityPoolSchema>;
 export type UpdateLiquidityPool = z.infer<typeof updateLiquidityPoolSchema>;
+
+export type MarketMakerStrategy = typeof marketMakerStrategies.$inferSelect;
+export type InsertMarketMakerStrategy = z.infer<typeof insertMarketMakerStrategySchema>;
+export type UpdateMarketMakerStrategy = z.infer<typeof updateMarketMakerStrategySchema>;
+
+export type BotDetectionLog = typeof botDetectionLogs.$inferSelect;
+export type InsertBotDetectionLog = z.infer<typeof insertBotDetectionLogSchema>;
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
