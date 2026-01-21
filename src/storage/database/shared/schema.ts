@@ -797,6 +797,172 @@ export const insertMarketMakerStrategyGroupSchema = createCoercedInsertSchema(ma
 });
 
 // ============================================================================
+// ============================================================================
+// 隐私保护表
+// ============================================================================
+export const privacyConfigs = pgTable(
+  "privacy_configs",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    walletId: varchar("wallet_id", { length: 36 }).notNull().references(() => wallets.id),
+    privacyLevel: varchar("privacy_level", { length: 20 }).notNull().default("MEDIUM"), // LOW, MEDIUM, HIGH, EXTREME
+    enableAutoPrivacy: boolean("enable_auto_privacy").notNull().default(false),
+    maxHops: integer("max_hops").notNull().default(2),
+    splitCount: integer("split_count").notNull().default(2),
+    minDelayMs: integer("min_delay_ms").notNull().default(1000),
+    maxDelayMs: integer("max_delay_ms").notNull().default(5000),
+    useRandomPath: boolean("use_random_path").notNull().default(true),
+    avoidKnownTracking: boolean("avoid_known_tracking").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    walletIdIdx: index("privacy_configs_wallet_id_idx").on(table.walletId),
+  })
+);
+
+export const hopWallets = pgTable(
+  "hop_wallets",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    address: varchar("address", { length: 256 }).notNull().unique(),
+    privateKey: text("private_key").notNull(), // 加密存储
+    chain: varchar("chain", { length: 20 }).notNull(), // SOL, ETH, BSC
+    isTemporary: boolean("is_temporary").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }), // 临时钱包的过期时间
+    usedCount: integer("used_count").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+  },
+  (table) => ({
+    addressIdx: index("hop_wallets_address_idx").on(table.address),
+    chainIdx: index("hop_wallets_chain_idx").on(table.chain),
+  })
+);
+
+export const privacyTransfers = pgTable(
+  "privacy_transfers",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    transferId: varchar("transfer_id", { length: 256 }).notNull().unique(),
+    fromWalletId: varchar("from_wallet_id", { length: 36 }).notNull().references(() => wallets.id),
+    toAddress: varchar("to_address", { length: 256 }).notNull(),
+    amount: varchar("amount", { length: 256 }).notNull(),
+    tokenSymbol: varchar("token_symbol", { length: 32 }).notNull(),
+    chain: varchar("chain", { length: 20 }).notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("PENDING"), // PENDING, IN_PROGRESS, COMPLETED, FAILED
+    privacyScore: integer("privacy_score").notNull().default(0), // 0-100
+    hopCount: integer("hop_count").notNull().default(0),
+    splitCount: integer("split_count").notNull().default(1),
+    totalFee: varchar("total_fee", { length: 256 }).notNull().default("0"),
+    hopDetails: jsonb("hop_details"), // 存储每一跳的详细信息
+    trackingAnalysis: jsonb("tracking_analysis"), // 转账前后的追踪分析
+    startTime: timestamp("start_time", { withTimezone: true }).notNull(),
+    completedTime: timestamp("completed_time", { withTimezone: true }),
+    errorMessage: varchar("error_message", { length: 512 }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    transferIdIdx: index("privacy_transfers_transfer_id_idx").on(table.transferId),
+    fromWalletIdIdx: index("privacy_transfers_from_wallet_id_idx").on(table.fromWalletId),
+    statusIdx: index("privacy_transfers_status_idx").on(table.status),
+    createdAtIdx: index("privacy_transfers_created_at_idx").on(table.createdAt),
+  })
+);
+
+export const walletPrivacyScores = pgTable(
+  "wallet_privacy_scores",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    walletId: varchar("wallet_id", { length: 36 }).notNull().references(() => wallets.id),
+    privacyScore: integer("privacy_score").notNull().default(0), // 0-100
+    riskLevel: varchar("risk_level", { length: 20 }).notNull().default("LOW"), // LOW, MEDIUM, HIGH, CRITICAL
+    trackingRiskScore: integer("tracking_risk_score").notNull().default(0),
+    hasDirectLinks: boolean("has_direct_links").notNull().default(false),
+    suspiciousPatterns: boolean("suspicious_patterns").notNull().default(false),
+    crossChainLinks: jsonb("cross_chain_links"), // 存在跨链关联的链列表
+    warnings: jsonb("warnings"), // 警告信息列表
+    recommendations: jsonb("recommendations"), // 建议信息列表
+    analyzedAt: timestamp("analyzed_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    walletIdIdx: index("wallet_privacy_scores_wallet_id_idx").on(table.walletId),
+    analyzedAtIdx: index("wallet_privacy_scores_analyzed_at_idx").on(table.analyzedAt),
+  })
+);
+
+export const walletLinkage = pgTable(
+  "wallet_linkage",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    walletId: varchar("wallet_id", { length: 36 }).notNull().references(() => wallets.id),
+    linkedWalletAddress: varchar("linked_wallet_address", { length: 256 }).notNull(),
+    linkageType: varchar("linkage_type", { length: 20 }).notNull(), // DIRECT, INDIRECT, SUSPICIOUS
+    confidence: integer("confidence").notNull().default(0), // 0-100 关联置信度
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    transactionCount: integer("transaction_count").notNull().default(1),
+    totalAmount: varchar("total_amount", { length: 256 }).notNull().default("0"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    walletIdIdx: index("wallet_linkage_wallet_id_idx").on(table.walletId),
+    linkedAddressIdx: index("wallet_linkage_linked_address_idx").on(table.linkedWalletAddress),
+  })
+);
+
+export const privacyEventLogs = pgTable(
+  "privacy_event_logs",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    eventType: varchar("event_type", { length: 50 }).notNull(), // TRANSFER_STARTED, HOP_COMPLETED, PRIVACY_ANALYSIS, etc.
+    walletId: varchar("wallet_id", { length: 36 }).references(() => wallets.id),
+    transferId: varchar("transfer_id", { length: 256 }),
+    eventData: jsonb("event_data"), // 事件详细数据
+    severity: varchar("severity", { length: 20 }).notNull().default("INFO"), // INFO, WARNING, ERROR
+    ipAddress: varchar("ip_address", { length: 64 }),
+    userAgent: varchar("user_agent", { length: 512 }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    eventTypeIdx: index("privacy_event_logs_event_type_idx").on(table.eventType),
+    walletIdIdx: index("privacy_event_logs_wallet_id_idx").on(table.walletId),
+    transferIdIdx: index("privacy_event_logs_transfer_id_idx").on(table.transferId),
+    createdAtIdx: index("privacy_event_logs_created_at_idx").on(table.createdAt),
+  })
+);
+
 // TypeScript Types
 // ============================================================================
 export type Wallet = typeof wallets.$inferSelect;
@@ -843,3 +1009,10 @@ export type InsertBotDetectionLog = z.infer<typeof insertBotDetectionLogSchema>;
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+
+export type PrivacyConfig = typeof privacyConfigs.$inferSelect;
+export type HopWallet = typeof hopWallets.$inferSelect;
+export type PrivacyTransfer = typeof privacyTransfers.$inferSelect;
+export type WalletPrivacyScore = typeof walletPrivacyScores.$inferSelect;
+export type WalletLinkage = typeof walletLinkage.$inferSelect;
+export type PrivacyEventLog = typeof privacyEventLogs.$inferSelect;
