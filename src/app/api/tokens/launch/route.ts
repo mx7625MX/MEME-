@@ -35,14 +35,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // 验证必填字段
-    const { walletId, chain, tokenName, tokenSymbol, totalSupply, liquidity, imageUrl, imageKey, bundleBuyPercent } = body;
+    const { walletId, chain, platform, tokenName, tokenSymbol, totalSupply, liquidity, imageUrl, imageKey, bundleBuyPercent } = body;
 
-    if (!walletId || !chain || !tokenName || !tokenSymbol || !totalSupply) {
+    if (!walletId || !chain || !platform || !tokenName || !tokenSymbol || !totalSupply) {
       return NextResponse.json(
-        { success: false, error: '缺少必填字段: walletId, chain, tokenName, tokenSymbol, totalSupply' },
+        { success: false, error: '缺少必填字段: walletId, chain, platform, tokenName, tokenSymbol, totalSupply' },
         { status: 400 }
       );
     }
+
+    // 判断是否为 Bonding Curve 平台（pump.fun、four.meme）
+    const isBondingCurvePlatform = platform === 'pump.fun' || platform === 'four.meme';
 
     // 创作者捆绑买入逻辑 - 必须是第一个买家
     // 默认买入 10% 的供应量，确保创作者是第一个买家
@@ -189,12 +192,13 @@ export async function POST(request: NextRequest) {
       .returning();
 
     // ========================================
-    // 自动添加流动性（做市值）
+    // 自动添加流动性（做市值）- 仅适用于 AMM DEX
     // ========================================
     let liquidityPool = null;
     let liquidityTransaction = null;
     
-    if (body.addLiquidity !== false) { // 默认启用
+    // Bonding Curve 平台（pump.fun、four.meme）不需要添加流动性
+    if (body.addLiquidity !== false && !isBondingCurvePlatform) {
       const liquidityTokenAmount = body.liquidityTokenAmount || (parseFloat(totalSupply) * 0.5).toString(); // 默认使用 50% 供应量
       const liquidityPairTokenAmount = body.liquidityPairTokenAmount || '1'; // 默认配对 1 SOL/ETH/USDT
       
@@ -203,7 +207,7 @@ export async function POST(request: NextRequest) {
       
       // 选择 DEX 和配对代币
       const chainConfig = DEX_CONFIG[chain];
-      const selectedDex = chainConfig?.default || 'auto';
+      const selectedDex = body.platform || chainConfig?.default || 'auto'; // 优先使用选择的平台
       const defaultPairToken = Object.keys(chainConfig?.pairTokens || {})[0];
       const selectedPairTokenSymbol = body.pairTokenSymbol || defaultPairToken;
       const pairTokenAddress = chainConfig?.pairTokens?.[selectedPairTokenSymbol];
@@ -304,7 +308,9 @@ export async function POST(request: NextRequest) {
         portfolio,
         liquidityPool,
         liquidityTransaction,
-        message: liquidityPool
+        message: isBondingCurvePlatform
+          ? `代币发行成功！已在 ${body.platform} 上线（Bonding Curve 机制）。您是第一个买家（买入 ${bundleBuyPercentValue}% 供应量）。当交易量达到一定阈值后，将自动上线到 DEX。`
+          : liquidityPool
           ? `代币发行成功！已自动添加流动性到 ${liquidityPool.metadata?.dexName || 'DEX'}（${tokenSymbol}/${liquidityPool.pairTokenSymbol}），已锁定 ${body.lockDuration || 7} 天。您是第一个买家（买入 ${bundleBuyPercentValue}% 供应量）`
           : `代币发行成功！已自动创建持仓并启用闪电卖出监控。您是第一个买家（买入 ${bundleBuyPercentValue}% 供应量）`
       }

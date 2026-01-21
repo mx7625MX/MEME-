@@ -92,6 +92,7 @@ export default function MemeMasterPro() {
   
   // 发币相关状态
   const [launchForm, setLaunchForm] = useState({
+    platform: 'raydium', // 发行平台：pump.fun, four.meme, raydium, uniswap, pancakeswap
     walletId: '',
     tokenName: '',
     tokenSymbol: '',
@@ -100,7 +101,7 @@ export default function MemeMasterPro() {
     imageUrl: '',
     imageKey: '',
     bundleBuyPercent: '10', // 默认捆绑买入 10%
-    // 流动性配置（做市值）
+    // 流动性配置（做市值）- 仅适用于 AMM DEX（Raydium、Uniswap、PancakeSwap）
     addLiquidity: true, // 默认开启
     liquidityTokenPercent: '50', // 默认使用 50% 供应量
     pairTokenSymbol: 'auto', // 自动选择配对代币
@@ -491,6 +492,7 @@ export default function MemeMasterPro() {
       if (data.success) {
         alert(data.data.message);
         setLaunchForm({
+          platform: 'raydium',
           walletId: '',
           tokenName: '',
           tokenSymbol: '',
@@ -2355,6 +2357,33 @@ export default function MemeMasterPro() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                  {/* 发行平台选择 */}
+                  <div>
+                    <Label className="text-gray-400">发行平台</Label>
+                    <select
+                      className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2"
+                      value={launchForm.platform}
+                      onChange={(e) => setLaunchForm({...launchForm, platform: e.target.value, addLiquidity: e.target.value !== 'pump.fun' && e.target.value !== 'four.meme'})}
+                    >
+                      <option value="pump.fun">pump.fun (Bonding Curve)</option>
+                      <option value="four.meme">four.meme (Bonding Curve)</option>
+                      <option value="raydium">Raydium (AMM)</option>
+                      <option value="uniswap">Uniswap (AMM)</option>
+                      <option value="pancakeswap">PancakeSwap (AMM)</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {launchForm.platform === 'pump.fun' || launchForm.platform === 'four.meme' ? (
+                        <>
+                          使用 Bonding Curve 机制，无需添加流动性。达到一定金额后可上线到 DEX。
+                        </>
+                      ) : (
+                        <>
+                          使用 AMM 机制，需要添加流动性池。
+                        </>
+                      )}
+                    </p>
+                  </div>
+
                   <div>
                     <Label className="text-gray-400">选择钱包</Label>
                     <select
@@ -2456,23 +2485,24 @@ export default function MemeMasterPro() {
                     />
                   </div>
                   
-                  {/* 流动性配置（做市值） */}
-                  <div className="p-4 bg-gradient-to-r from-blue-900/30 to-cyan-900/30 rounded-lg border border-blue-500/30 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-gray-300 font-semibold flex items-center gap-2">
-                        <BarChart3 className="h-4 w-4 text-blue-400" />
-                        自动添加流动性（做市值）
-                      </Label>
-                      <input
-                        type="checkbox"
-                        checked={launchForm.addLiquidity}
-                        onChange={(e) => setLaunchForm({...launchForm, addLiquidity: e.target.checked})}
-                        className="w-5 h-5 rounded border-white/20 bg-black/50 text-purple-600 focus:ring-purple-500"
-                      />
-                    </div>
-                    <p className="text-xs text-gray-400">
-                      自动将代币添加到去中心化交易所（DEX），创建交易对并提供流动性，让代币可以交易
-                    </p>
+                  {/* 流动性配置（做市值）- 仅适用于 AMM DEX */}
+                  {launchForm.platform !== 'pump.fun' && launchForm.platform !== 'four.meme' && (
+                    <div className="p-4 bg-gradient-to-r from-blue-900/30 to-cyan-900/30 rounded-lg border border-blue-500/30 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-gray-300 font-semibold flex items-center gap-2">
+                          <BarChart3 className="h-4 w-4 text-blue-400" />
+                          自动添加流动性（做市值）
+                        </Label>
+                        <input
+                          type="checkbox"
+                          checked={launchForm.addLiquidity}
+                          onChange={(e) => setLaunchForm({...launchForm, addLiquidity: e.target.checked})}
+                          className="w-5 h-5 rounded border-white/20 bg-black/50 text-purple-600 focus:ring-purple-500"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-400">
+                        自动将代币添加到去中心化交易所（{launchForm.platform}），创建交易对并提供流动性，让代币可以交易
+                      </p>
                     
                     {launchForm.addLiquidity && (
                       <div className="space-y-3 mt-3 pl-4 border-l-2 border-blue-500/50">
@@ -2571,6 +2601,7 @@ export default function MemeMasterPro() {
                       </div>
                     )}
                   </div>
+                  )}
                   
                   <div className="p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg border border-purple-500/30">
                     <Label className="text-gray-300 font-semibold flex items-center gap-2">
@@ -3507,6 +3538,33 @@ export default function MemeMasterPro() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                  {/* 发行平台选择 */}
+                  <div>
+                    <Label className="text-gray-400">发行平台</Label>
+                    <select
+                      className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2"
+                      value={launchForm.platform}
+                      onChange={(e) => setLaunchForm({...launchForm, platform: e.target.value, addLiquidity: e.target.value !== 'pump.fun' && e.target.value !== 'four.meme'})}
+                    >
+                      <option value="pump.fun">pump.fun (Bonding Curve)</option>
+                      <option value="four.meme">four.meme (Bonding Curve)</option>
+                      <option value="raydium">Raydium (AMM)</option>
+                      <option value="uniswap">Uniswap (AMM)</option>
+                      <option value="pancakeswap">PancakeSwap (AMM)</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {launchForm.platform === 'pump.fun' || launchForm.platform === 'four.meme' ? (
+                        <>
+                          使用 Bonding Curve 机制，无需添加流动性。达到一定金额后可上线到 DEX。
+                        </>
+                      ) : (
+                        <>
+                          使用 AMM 机制，需要添加流动性池。
+                        </>
+                      )}
+                    </p>
+                  </div>
+
                   <div>
                     <Label className="text-gray-400">选择钱包</Label>
                     <select
