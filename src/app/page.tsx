@@ -179,6 +179,13 @@ export default function MemeMasterPro() {
   // 交易历史
   const [transactions, setTransactions] = useState<any[]>([]);
   
+  // 交易历史筛选
+  const [transactionFilter, setTransactionFilter] = useState<{
+    type?: string;
+    chain?: string;
+    status?: string;
+  }>({});
+  
   // 自动交易配置
   const [autoTrades, setAutoTrades] = useState<any[]>([]);
   const [autoTradeForm, setAutoTradeForm] = useState({
@@ -212,6 +219,11 @@ export default function MemeMasterPro() {
   useEffect(() => {
     initializeData();
   }, []);
+
+  // 当筛选条件改变时，自动刷新交易历史
+  useEffect(() => {
+    loadTransactions();
+  }, [transactionFilter]);
 
   // 加载数据
   const initializeData = async () => {
@@ -282,7 +294,13 @@ export default function MemeMasterPro() {
   
   const loadTransactions = async () => {
     try {
-      const res = await fetch(`${API_BASE}/transactions`);
+      const params = new URLSearchParams();
+      if (transactionFilter.type) params.append('type', transactionFilter.type);
+      if (transactionFilter.chain) params.append('chain', transactionFilter.chain);
+      if (transactionFilter.status) params.append('status', transactionFilter.status);
+      
+      const url = `${API_BASE}/transactions${params.toString() ? '?' + params.toString() : ''}`;
+      const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
         setTransactions(data.data);
@@ -4135,10 +4153,49 @@ export default function MemeMasterPro() {
           <TabsContent value="history" className="space-y-4">
             <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="text-white">交易历史</CardTitle>
-                <CardDescription className="text-gray-400">
-                  查看所有交易记录
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-white">交易历史</CardTitle>
+                    <CardDescription className="text-gray-400">
+                      查看所有交易记录
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {/* 交易类型筛选 */}
+                    <select
+                      value={transactionFilter.type || 'all'}
+                      onChange={(e) => setTransactionFilter({ ...transactionFilter, type: e.target.value === 'all' ? undefined : e.target.value })}
+                      className="bg-black/50 border border-white/20 text-white rounded-md px-3 py-2 text-sm"
+                    >
+                      <option value="all">全部类型</option>
+                      <option value="launch">🚀 发币</option>
+                      <option value="buy">💰 买入</option>
+                      <option value="sell">💸 卖出</option>
+                      <option value="transfer">📤 转账</option>
+                      <option value="add_liquidity">💧 添加流动性</option>
+                    </select>
+                    {/* 链筛选 */}
+                    <select
+                      value={transactionFilter.chain || 'all'}
+                      onChange={(e) => setTransactionFilter({ ...transactionFilter, chain: e.target.value === 'all' ? undefined : e.target.value })}
+                      className="bg-black/50 border border-white/20 text-white rounded-md px-3 py-2 text-sm"
+                    >
+                      <option value="all">全部链</option>
+                      <option value="solana">Solana</option>
+                      <option value="eth">Ethereum</option>
+                      <option value="bsc">BSC</option>
+                    </select>
+                    {/* 刷新按钮 */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={loadTransactions}
+                      className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 {transactions.length === 0 ? (
@@ -4154,6 +4211,7 @@ export default function MemeMasterPro() {
                               {tx.type === 'buy' && '💰 买入'}
                               {tx.type === 'sell' && '💸 卖出'}
                               {tx.type === 'transfer' && '📤 转账'}
+                              {tx.type === 'add_liquidity' && '💧 添加流动性'}
                             </span>
                             <Badge variant="outline" className="border-white/20">
                               {tx.chain.toUpperCase()}

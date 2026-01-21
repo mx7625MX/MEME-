@@ -42,17 +42,18 @@ export class TransactionManager {
       conditions.push(eq(transactions.status, filters.status));
     }
 
-    let results: Transaction[];
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    if (conditions.length > 0) {
-      results = await db.select().from(transactions).where(and(...conditions));
-    } else {
-      results = await db.select().from(transactions);
-    }
+    // Use database-level sorting and pagination for better performance
+    const results = await db
+      .select()
+      .from(transactions)
+      .where(whereClause)
+      .orderBy(desc(transactions.createdAt))
+      .limit(limit)
+      .offset(skip);
 
-    // Sort and paginate in memory
-    results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    return results.slice(skip, skip + limit);
+    return results;
   }
 
   async getTransactionById(id: string): Promise<Transaction | null> {
