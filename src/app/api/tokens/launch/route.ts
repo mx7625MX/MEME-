@@ -115,10 +115,10 @@ export async function POST(request: NextRequest) {
       liquidity: liquidity ? liquidity.toString() : '0',
       price: '0.000001',
       isHot: false,
-      website: website || null,
-      twitter: twitter || null,
-      telegram: telegram || null,
-      discord: discord || null,
+      website: (website && website.trim()) || null,
+      twitter: (twitter && twitter.trim()) || null,
+      telegram: (telegram && telegram.trim()) || null,
+      discord: (discord && discord.trim()) || null,
       metadata: tokenMetadata
     };
 
@@ -257,8 +257,8 @@ export async function POST(request: NextRequest) {
       const chainConfig = DEX_CONFIG[chain];
       const selectedDex = body.platform || chainConfig?.default || 'auto'; // 优先使用选择的平台
       const defaultPairToken = Object.keys(chainConfig?.pairTokens || {})[0];
-      const selectedPairTokenSymbol = body.pairTokenSymbol || defaultPairToken;
-      const pairTokenAddress = chainConfig?.pairTokens?.[selectedPairTokenSymbol];
+      const selectedPairTokenSymbol = (body.pairTokenSymbol && body.pairTokenSymbol !== 'auto') ? body.pairTokenSymbol : defaultPairToken;
+      const pairTokenAddress = chainConfig?.pairTokens?.[selectedPairTokenSymbol] || defaultPairToken;
       
       // 计算初始价格
       const initialPrice = parseFloat(liquidityPairTokenAmount) / parseFloat(liquidityTokenAmount);

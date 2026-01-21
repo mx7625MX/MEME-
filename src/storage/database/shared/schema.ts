@@ -549,6 +549,10 @@ export const insertTokenSchema = createCoercedInsertSchema(tokens).pick({
   priceChange24h: true,
   volume24h: true,
   isHot: true,
+  website: true,
+  twitter: true,
+  telegram: true,
+  discord: true,
   metadata: true,
 });
 
