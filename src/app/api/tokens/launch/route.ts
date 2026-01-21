@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // 验证必填字段
-    const { walletId, chain, platform, tokenName, tokenSymbol, totalSupply, liquidity, imageUrl, imageKey, bundleBuyAmount, bundleBuyTokenSymbol, website, twitter, telegram, discord } = body;
+    const { walletId, chain, platform, tokenName, tokenSymbol, totalSupply, liquidity, imageUrl, imageKey, bundleBuyEnabled, bundleBuyAmount, bundleBuyTokenSymbol, website, twitter, telegram, discord } = body;
 
     if (!walletId || !chain || !platform || !tokenName || !tokenSymbol || !totalSupply) {
       return NextResponse.json(
@@ -47,35 +47,42 @@ export async function POST(request: NextRequest) {
     // 判断是否为 Bonding Curve 平台（pump.fun、four.meme）
     const isBondingCurvePlatform = platform === 'pump.fun' || platform === 'four.meme';
 
-    // 创作者捆绑买入逻辑 - 必须是第一个买家
-    // bundleBuyAmount 是购买代币金额（如 0.1 SOL/USDC），需要根据初始价格计算能买多少代币
-    const bundleBuyNativeAmount = bundleBuyAmount || 0.1; // 默认 0.1 SOL/BNB/ETH
+    // 创作者捆绑买入逻辑 - 可选
+    let bundleBuyNativeAmount = null;
+    let bundleBuyTokenAmount = 0;
+    let bundleBuyCost = null;
+    let bundleBuyTokenSymbolFinal = null;
     
-    // 确定使用的购买代币符号
-    let buyTokenSymbol = bundleBuyTokenSymbol;
-    if (!buyTokenSymbol || buyTokenSymbol === 'auto') {
-      // 自动选择，根据链决定使用原生代币
-      switch (chain) {
-        case 'solana':
-          buyTokenSymbol = 'SOL';
-          break;
-        case 'bsc':
-          buyTokenSymbol = 'BNB';
-          break;
-        case 'eth':
-          buyTokenSymbol = 'ETH';
-          break;
-        default:
-          buyTokenSymbol = 'SOL';
+    if (bundleBuyEnabled !== false) {
+      // 启用捆绑买入
+      bundleBuyNativeAmount = bundleBuyAmount || '0.1'; // 默认 0.1 SOL/BNB/ETH
+      
+      // 确定使用的购买代币符号
+      let buyTokenSymbol = bundleBuyTokenSymbol;
+      if (!buyTokenSymbol || buyTokenSymbol === 'auto') {
+        // 自动选择，根据链决定使用原生代币
+        switch (chain) {
+          case 'solana':
+            buyTokenSymbol = 'SOL';
+            break;
+          case 'bsc':
+            buyTokenSymbol = 'BNB';
+            break;
+          case 'eth':
+            buyTokenSymbol = 'ETH';
+            break;
+          default:
+            buyTokenSymbol = 'SOL';
+        }
       }
+      
+      const initialPrice = '0.000001'; // 初始价格（购买代币/代币）
+      
+      // 计算能买多少代币：代币数量 = 购买代币金额 / 初始价格
+      bundleBuyTokenAmount = Math.floor(parseFloat(bundleBuyNativeAmount) / parseFloat(initialPrice));
+      bundleBuyCost = bundleBuyNativeAmount.toString(); // 实际投入的购买代币金额
+      bundleBuyTokenSymbolFinal = buyTokenSymbol; // 使用的购买代币符号
     }
-    
-    const initialPrice = '0.000001'; // 初始价格（购买代币/代币）
-    
-    // 计算能买多少代币：代币数量 = 购买代币金额 / 初始价格
-    const bundleBuyTokenAmount = Math.floor(parseFloat(bundleBuyNativeAmount) / parseFloat(initialPrice));
-    const bundleBuyCost = bundleBuyNativeAmount.toString(); // 实际投入的购买代币金额
-    const bundleBuyTokenSymbolFinal = buyTokenSymbol; // 使用的购买代币符号
 
     // 模拟代币发行逻辑（实际应用中需要调用区块链网络）
     // 这里我们创建一个代币地址和记录
@@ -143,83 +150,91 @@ export async function POST(request: NextRequest) {
       .values(validatedTxData)
       .returning();
 
-    // 创作者捆绑买入交易记录（必须是第一个买家）
-    const bundleBuyTx = {
-      walletId,
-      type: 'buy' as const,
-      chain,
-      tokenAddress: mockTokenAddress,
-      tokenSymbol,
-      amount: bundleBuyTokenAmount.toString(),
-      price: initialPrice,
-      fee: (parseFloat(bundleBuyCost) * 0.001).toString(), // 0.1% 交易费
-      status: 'completed' as const,
-      metadata: {
-        bundleBuy: true, // 标记为捆绑买入
-        bundleBuyNativeAmount: bundleBuyNativeAmount,
-        bundleBuyTokenAmount: bundleBuyTokenAmount,
-        bundleBuyTokenSymbol: bundleBuyTokenSymbolFinal, // 使用的购买代币符号
-        txHash: `0x${Array.from({ length: 64 }, () =>
-          Math.floor(Math.random() * 16).toString(16)
-        ).join('')}`,
-        isFirstBuyer: true, // 标记为第一个买家
-      }
-    };
+    // 创作者捆绑买入交易记录（仅在启用时创建）
+    let bundleBuyTransaction = null;
+    if (bundleBuyEnabled !== false) {
+      const initialPrice = '0.000001'; // 初始价格（购买代币/代币）
+      const bundleBuyTx = {
+        walletId,
+        type: 'buy' as const,
+        chain,
+        tokenAddress: mockTokenAddress,
+        tokenSymbol,
+        amount: bundleBuyTokenAmount.toString(),
+        price: initialPrice,
+        fee: (parseFloat(bundleBuyCost!) * 0.001).toString(), // 0.1% 交易费
+        status: 'completed' as const,
+        metadata: {
+          bundleBuy: true, // 标记为捆绑买入
+          bundleBuyNativeAmount: bundleBuyNativeAmount,
+          bundleBuyTokenAmount: bundleBuyTokenAmount,
+          bundleBuyTokenSymbol: bundleBuyTokenSymbolFinal, // 使用的购买代币符号
+          txHash: `0x${Array.from({ length: 64 }, () =>
+            Math.floor(Math.random() * 16).toString(16)
+          ).join('')}`,
+          isFirstBuyer: true, // 标记为第一个买家
+        }
+      };
 
-    const validatedBundleBuyTxData = insertTransactionSchema.parse(bundleBuyTx);
-    const [bundleBuyTransaction] = await db.insert(transactions)
-      .values(validatedBundleBuyTxData)
-      .returning();
+      const validatedBundleBuyTxData = insertTransactionSchema.parse(bundleBuyTx);
+      bundleBuyTransaction = (await db.insert(transactions)
+        .values(validatedBundleBuyTxData)
+        .returning())[0];
+    }
 
-    // 自动创建持仓记录（创作者模式）
-    // 创作者持有剩余的供应量（总供应量 - 捆绑买入数量）
-    const creatorHoldingAmount = (parseFloat(totalSupply) - bundleBuyTokenAmount).toString();
-    const totalBuyAmount = bundleBuyCost; // 实际投入的原生代币金额
+    // 自动创建持仓记录（仅在启用捆绑买入时创建）
+    let portfolio = null;
+    if (bundleBuyEnabled !== false) {
+      // 创作者持有剩余的供应量（总供应量 - 捆绑买入数量）
+      const creatorHoldingAmount = (parseFloat(totalSupply) - bundleBuyTokenAmount).toString();
+      const totalBuyAmount = bundleBuyCost; // 实际投入的购买代币金额
+      const initialPrice = '0.000001'; // 初始价格
 
-    const newPortfolio = {
-      walletId,
-      chain,
-      tokenAddress: mockTokenAddress,
-      tokenSymbol,
-      tokenName,
-      amount: creatorHoldingAmount, // 持有剩余的供应量
-      buyPrice: initialPrice,
-      buyAmount: totalBuyAmount, // 实际投入的原生代币金额
-      currentPrice: initialPrice,
-      profitTarget: body.profitTarget || '100', // 默认利润目标 100%
-      stopLoss: body.stopLoss || '30', // 默认止损 30%
-      totalInvested: totalBuyAmount,
-      totalValue: totalBuyAmount,
-      profitLoss: '0',
-      profitLossPercent: '0',
-      status: 'active',
-      // 启用自动闪电卖出
-      autoSellEnabled: body.autoSellEnabled !== false, // 默认启用
-      autoSellType: body.autoSellType || 'both', // 默认同时监测利润和大额买入
-      whaleBuyThreshold: body.whaleBuyThreshold || '0.5', // 默认大额买入阈值 0.5 ETH/SOL
-      autoSellPercentage: body.autoSellPercentage || '100', // 默认全部卖出
-      autoSellStatus: 'idle',
-      // 启用定时卖出（针对无人买入的情况）
-      timedSellEnabled: body.timedSellEnabled !== false, // 默认启用
-      timedSellSeconds: body.timedSellSeconds || 5, // 默认 5 秒
-      timedSellScheduledAt: new Date(Date.now() + (body.timedSellSeconds || 5) * 1000), // 预定 5 秒后执行
-      timedSellExecutedAt: null,
-      metadata: {
-        creatorMode: true,
-        launchTxHash: (transaction.metadata as any)?.txHash,
-        bundleBuyTxHash: (bundleBuyTransaction.metadata as any)?.txHash, // 捆绑买入交易哈希
-        bundleBuyNativeAmount: bundleBuyNativeAmount,
-        bundleBuyTokenAmount: bundleBuyTokenAmount,
-        bundleBuyTokenSymbol: bundleBuyTokenSymbolFinal, // 使用的购买代币符号
-        isFirstBuyer: true, // 标记为第一个买家
-        liquidityPool: `0x${Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`,
-      }
-    };
+      const newPortfolio = {
+        walletId,
+        chain,
+        tokenAddress: mockTokenAddress,
+        tokenSymbol,
+        tokenName,
+        amount: creatorHoldingAmount, // 持有剩余的供应量
+        buyPrice: initialPrice,
+        buyAmount: totalBuyAmount, // 实际投入的购买代币金额
+        currentPrice: initialPrice,
+        profitTarget: body.profitTarget || '100', // 默认利润目标 100%
+        stopLoss: body.stopLoss || '30', // 默认止损 30%
+        totalInvested: totalBuyAmount,
+        totalValue: totalBuyAmount,
+        profitLoss: '0',
+        profitLossPercent: '0',
+        status: 'active',
+        // 启用自动闪电卖出
+        autoSellEnabled: body.autoSellEnabled !== false, // 默认启用
+        autoSellType: body.autoSellType || 'both', // 默认同时监测利润和大额买入
+        whaleBuyThreshold: body.whaleBuyThreshold || '0.5', // 默认大额买入阈值 0.5 ETH/SOL
+        autoSellPercentage: body.autoSellPercentage || '100', // 默认全部卖出
+        autoSellStatus: 'idle',
+        // 启用定时卖出（针对无人买入的情况）
+        timedSellEnabled: body.timedSellEnabled !== false, // 默认启用
+        timedSellSeconds: body.timedSellSeconds || 5, // 默认 5 秒
+        timedSellScheduledAt: new Date(Date.now() + (body.timedSellSeconds || 5) * 1000), // 预定 5 秒后执行
+        timedSellExecutedAt: null,
+        metadata: {
+          creatorMode: true,
+          launchTxHash: (transaction.metadata as any)?.txHash,
+          bundleBuyTxHash: (bundleBuyTransaction?.metadata as any)?.txHash, // 捆绑买入交易哈希
+          bundleBuyNativeAmount: bundleBuyNativeAmount,
+          bundleBuyTokenAmount: bundleBuyTokenAmount,
+          bundleBuyTokenSymbol: bundleBuyTokenSymbolFinal, // 使用的购买代币符号
+          isFirstBuyer: true, // 标记为第一个买家
+          liquidityPool: `0x${Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`,
+        }
+      };
 
-    const validatedPortfolioData = insertPortfolioSchema.parse(newPortfolio);
-    const [portfolio] = await db.insert(portfolios)
-      .values(validatedPortfolioData)
-      .returning();
+      const validatedPortfolioData = insertPortfolioSchema.parse(newPortfolio);
+      portfolio = (await db.insert(portfolios)
+        .values(validatedPortfolioData)
+        .returning())[0];
+    }
 
     // ========================================
     // 自动添加流动性（做市值）- 仅适用于 AMM DEX
@@ -338,11 +353,17 @@ export async function POST(request: NextRequest) {
         portfolio,
         liquidityPool,
         liquidityTransaction,
-        message: isBondingCurvePlatform
-          ? `代币发行成功！已在 ${body.platform} 上线（Bonding Curve 机制）。您是第一个买家（投入 ${bundleBuyNativeAmount} ${bundleBuyTokenSymbolFinal}，买入 ${bundleBuyTokenAmount} ${tokenSymbol}）。当交易量达到一定阈值后，将自动上线到 DEX。`
-          : liquidityPool
-          ? `代币发行成功！已自动添加流动性到 ${liquidityPool.metadata?.dexName || 'DEX'}（${tokenSymbol}/${liquidityPool.pairTokenSymbol}），已锁定 ${body.lockDuration || 7} 天。您是第一个买家（投入 ${bundleBuyNativeAmount} ${bundleBuyTokenSymbolFinal}，买入 ${bundleBuyTokenAmount} ${tokenSymbol}）`
-          : `代币发行成功！已自动创建持仓并启用闪电卖出监控。您是第一个买家（投入 ${bundleBuyNativeAmount} ${bundleBuyTokenSymbolFinal}，买入 ${bundleBuyTokenAmount} ${tokenSymbol}）`
+        message: bundleBuyEnabled === false
+          ? (isBondingCurvePlatform
+            ? `代币发行成功！已在 ${body.platform} 上线（Bonding Curve 机制）。您未启用捆绑买入。当交易量达到一定阈值后，将自动上线到 DEX。`
+            : liquidityPool
+            ? `代币发行成功！已自动添加流动性到 ${liquidityPool.metadata?.dexName || 'DEX'}（${tokenSymbol}/${liquidityPool.pairTokenSymbol}），已锁定 ${body.lockDuration || 7} 天。您未启用捆绑买入。`
+            : `代币发行成功！您未启用捆绑买入。`)
+          : (isBondingCurvePlatform
+            ? `代币发行成功！已在 ${body.platform} 上线（Bonding Curve 机制）。您是第一个买家（投入 ${bundleBuyNativeAmount} ${bundleBuyTokenSymbolFinal}，买入 ${bundleBuyTokenAmount} ${tokenSymbol}）。当交易量达到一定阈值后，将自动上线到 DEX。`
+            : liquidityPool
+            ? `代币发行成功！已自动添加流动性到 ${liquidityPool.metadata?.dexName || 'DEX'}（${tokenSymbol}/${liquidityPool.pairTokenSymbol}），已锁定 ${body.lockDuration || 7} 天。您是第一个买家（投入 ${bundleBuyNativeAmount} ${bundleBuyTokenSymbolFinal}，买入 ${bundleBuyTokenAmount} ${tokenSymbol}）`
+            : `代币发行成功！已自动创建持仓并启用闪电卖出监控。您是第一个买家（投入 ${bundleBuyNativeAmount} ${bundleBuyTokenSymbolFinal}，买入 ${bundleBuyTokenAmount} ${tokenSymbol}）`)
       }
     });
 

@@ -110,6 +110,7 @@ export default function MemeMasterPro() {
     liquidity: '',
     imageUrl: '',
     imageKey: '',
+    bundleBuyEnabled: true, // 是否启用捆绑买入
     bundleBuyAmount: '0.1', // 默认捆绑买入 0.1 SOL/BNB/ETH
     bundleBuyTokenSymbol: 'auto', // 捆绑买入使用的代币，auto表示自动选择（原生代币）
     // 媒体链接
@@ -575,6 +576,7 @@ export default function MemeMasterPro() {
           liquidity: '',
           imageUrl: '',
           imageKey: '',
+          bundleBuyEnabled: true,
           bundleBuyAmount: '0.1',
           bundleBuyTokenSymbol: 'auto',
           website: '',
@@ -2859,90 +2861,104 @@ export default function MemeMasterPro() {
                   </div>
                   )}
                   
-                  <div className="p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg border border-purple-500/30">
-                    <Label className="text-gray-300 font-semibold flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-purple-400" />
-                      创作者捆绑买入（必选）
-                    </Label>
-                    <p className="text-xs text-gray-400 mt-1 mb-2">
-                      作为创作者，您必须是第一个买家。系统将自动在发币后立即用指定金额购买代币。
-                    </p>
-                    
-                    {/* 选择购买代币 */}
-                    <div className="mb-3">
-                      <Label className="text-gray-400 text-sm">购买代币</Label>
-                      <select
-                        className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2 text-sm"
-                        value={launchForm.bundleBuyTokenSymbol}
-                        onChange={(e) => setLaunchForm({...launchForm, bundleBuyTokenSymbol: e.target.value})}
-                      >
-                        <option value="auto">自动选择（推荐）</option>
-                        {(() => {
-                          const selectedWallet = wallets.find(w => w.id === launchForm.walletId);
-                          if (!selectedWallet) return null;
-                          switch (selectedWallet.chain) {
-                            case 'solana':
-                              return (
-                                <>
-                                  <option value="SOL">SOL</option>
-                                  <option value="USDC">USDC</option>
-                                  <option value="USDT">USDT</option>
-                                </>
-                              );
-                            case 'bsc':
-                              return (
-                                <>
-                                  <option value="BNB">BNB</option>
-                                  <option value="USDC">USDC</option>
-                                  <option value="USDT">USDT</option>
-                                </>
-                              );
-                            case 'eth':
-                              return (
-                                <>
-                                  <option value="ETH">ETH</option>
-                                  <option value="WETH">WETH</option>
-                                  <option value="USDC">USDC</option>
-                                  <option value="USDT">USDT</option>
-                                </>
-                              );
-                            default:
-                              return null;
-                          }
-                        })()}
-                      </select>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {launchForm.bundleBuyTokenSymbol === 'auto' ? '自动使用链的原生代币进行购买' : '使用指定代币进行购买'}
-                      </p>
-                    </div>
-                    
-                    <div className="flex items-center gap-3">
-                      <Input
-                        className="bg-black/50 border-white/10 text-white flex-1"
-                        placeholder="0.1"
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        value={launchForm.bundleBuyAmount}
-                        onChange={(e) => setLaunchForm({...launchForm, bundleBuyAmount: e.target.value})}
+                  <div className="p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg border border-purple-500/30 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-gray-300 font-semibold flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-purple-400" />
+                        创作者捆绑买入（可选）
+                      </Label>
+                      <input
+                        type="checkbox"
+                        checked={launchForm.bundleBuyEnabled}
+                        onChange={(e) => setLaunchForm({...launchForm, bundleBuyEnabled: e.target.checked})}
+                        className="w-5 h-5 rounded border-white/20 bg-black/50 text-purple-600 focus:ring-purple-500"
                       />
-                      <span className="text-gray-300 whitespace-nowrap">{(() => {
-                        const selectedWallet = wallets.find(w => w.id === launchForm.walletId);
-                        if (!selectedWallet || launchForm.bundleBuyTokenSymbol === 'auto') {
-                          if (!selectedWallet) return 'SOL';
-                          switch (selectedWallet.chain) {
-                            case 'solana': return 'SOL';
-                            case 'bsc': return 'BNB';
-                            case 'eth': return 'ETH';
-                            default: return 'SOL';
-                          }
-                        }
-                        return launchForm.bundleBuyTokenSymbol;
-                      })()}</span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">
-                      推荐值：0.1 - 0.5 • 将自动创建持仓并启用闪电卖出监控
+                    <p className="text-xs text-gray-400">
+                      {launchForm.bundleBuyEnabled 
+                        ? '启用后将自动在发币后立即用指定金额购买代币，成为第一个买家。'
+                        : '不启用捆绑买入，代币发布后您不会自动购买。'}
                     </p>
+                    
+                    {/* 捆绑买入配置 - 仅在启用时显示 */}
+                    {launchForm.bundleBuyEnabled && (
+                      <div className="space-y-3 pt-3 border-t border-white/10">
+                        <div className="mb-3">
+                          <Label className="text-gray-400 text-sm">购买代币</Label>
+                          <select
+                            className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2 text-sm"
+                            value={launchForm.bundleBuyTokenSymbol}
+                            onChange={(e) => setLaunchForm({...launchForm, bundleBuyTokenSymbol: e.target.value})}
+                          >
+                            <option value="auto">自动选择（推荐）</option>
+                            {(() => {
+                              const selectedWallet = wallets.find(w => w.id === launchForm.walletId);
+                              if (!selectedWallet) return null;
+                              switch (selectedWallet.chain) {
+                                case 'solana':
+                                  return (
+                                    <>
+                                      <option value="SOL">SOL</option>
+                                      <option value="USDC">USDC</option>
+                                      <option value="USDT">USDT</option>
+                                    </>
+                                  );
+                                case 'bsc':
+                                  return (
+                                    <>
+                                      <option value="BNB">BNB</option>
+                                      <option value="USDC">USDC</option>
+                                      <option value="USDT">USDT</option>
+                                    </>
+                                  );
+                                case 'eth':
+                                  return (
+                                    <>
+                                      <option value="ETH">ETH</option>
+                                      <option value="WETH">WETH</option>
+                                      <option value="USDC">USDC</option>
+                                      <option value="USDT">USDT</option>
+                                    </>
+                                  );
+                                default:
+                                  return null;
+                              }
+                            })()}
+                          </select>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {launchForm.bundleBuyTokenSymbol === 'auto' ? '自动使用链的原生代币进行购买' : '使用指定代币进行购买'}
+                          </p>
+                        </div>
+                        
+                        <div className="flex items-center gap-3">
+                          <Input
+                            className="bg-black/50 border-white/10 text-white flex-1"
+                            placeholder="0.1"
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            value={launchForm.bundleBuyAmount}
+                            onChange={(e) => setLaunchForm({...launchForm, bundleBuyAmount: e.target.value})}
+                          />
+                          <span className="text-gray-300 whitespace-nowrap">{(() => {
+                            const selectedWallet = wallets.find(w => w.id === launchForm.walletId);
+                            if (!selectedWallet || launchForm.bundleBuyTokenSymbol === 'auto') {
+                              if (!selectedWallet) return 'SOL';
+                              switch (selectedWallet.chain) {
+                                case 'solana': return 'SOL';
+                                case 'bsc': return 'BNB';
+                                case 'eth': return 'ETH';
+                                default: return 'SOL';
+                              }
+                            }
+                            return launchForm.bundleBuyTokenSymbol;
+                          })()}</span>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          推荐值：0.1 - 0.5 • 将自动创建持仓并启用闪电卖出监控
+                        </p>
+                      </div>
+                    )}
                   </div>
                   <Button
                     className="w-full bg-purple-600 hover:bg-purple-700"
