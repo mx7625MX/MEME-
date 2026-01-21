@@ -556,12 +556,6 @@ export default function MemeMasterPro() {
       return;
     }
     
-    // 验证捆绑买入配置
-    if (launchForm.bundleBuyEnabled && !launchForm.bundleBuyTokenSymbol) {
-      alert('请选择捆绑买入的购买代币');
-      return;
-    }
-    
     try {
       setIsLaunching(true);
       const res = await fetch(`${API_BASE}/tokens/launch`, {
@@ -2890,7 +2884,7 @@ export default function MemeMasterPro() {
                     {launchForm.bundleBuyEnabled && (
                       <div className="space-y-3 pt-3 border-t border-white/10">
                         <div className="mb-3">
-                          <Label className="text-gray-400 text-sm">购买代币 <span className="text-red-400">*</span></Label>
+                          <Label className="text-gray-400 text-sm">购买代币</Label>
                           <select
                             className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2 text-sm"
                             value={launchForm.bundleBuyTokenSymbol}
