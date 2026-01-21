@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -118,6 +119,8 @@ export function MarketMakerManager() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showBotLogs, setShowBotLogs] = useState(false);
+  const [selectedStrategies, setSelectedStrategies] = useState<Set<string>>(new Set());
+  const [isDeletingBatch, setIsDeletingBatch] = useState(false);
 
   const [strategyForm, setStrategyForm] = useState({
     name: '',
@@ -269,11 +272,64 @@ export function MarketMakerManager() {
       const data = await res.json();
       if (data.success) {
         loadStrategies();
+        selectedStrategies.delete(strategyId);
+        setSelectedStrategies(new Set(selectedStrategies));
       }
     } catch (error) {
       console.error('Error deleting strategy:', error);
     }
   };
+
+  // 批量删除策略
+  const handleBatchDelete = async () => {
+    if (selectedStrategies.size === 0) return;
+
+    try {
+      setIsDeletingBatch(true);
+      const deletePromises = Array.from(selectedStrategies).map((id) =>
+        fetch(`${API_BASE}/strategies/${id}`, { method: 'DELETE' })
+      );
+
+      const results = await Promise.all(deletePromises);
+      const allSuccess = results.every((res) => res.ok);
+
+      if (allSuccess) {
+        setSelectedStrategies(new Set());
+        loadStrategies();
+      } else {
+        alert('部分策略删除失败，请重试');
+      }
+    } catch (error) {
+      console.error('Error batch deleting strategies:', error);
+      alert('批量删除失败');
+    } finally {
+      setIsDeletingBatch(false);
+    }
+  };
+
+  // 切换策略选中状态
+  const handleSelectStrategy = (strategyId: string, checked: boolean) => {
+    const newSelected = new Set(selectedStrategies);
+    if (checked) {
+      newSelected.add(strategyId);
+    } else {
+      newSelected.delete(strategyId);
+    }
+    setSelectedStrategies(newSelected);
+  };
+
+  // 全选/取消全选
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedStrategies(new Set(strategies.map(s => s.id)));
+    } else {
+      setSelectedStrategies(new Set());
+    }
+  };
+
+  // 全选状态
+  const isAllSelected = strategies.length > 0 && selectedStrategies.size === strategies.length;
+  const isSomeSelected = selectedStrategies.size > 0 && selectedStrategies.size < strategies.length;
 
   // 重置表单
   const resetForm = () => {
@@ -442,6 +498,42 @@ export function MarketMakerManager() {
               </CardDescription>
             </div>
             <div className="flex gap-2">
+              {selectedStrategies.size > 0 && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" disabled={isDeletingBatch}>
+                      {isDeletingBatch ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          删除中...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          批量删除 ({selectedStrategies.size})
+                        </>
+                      )}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>批量删除策略</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        确定要删除选中的 {selectedStrategies.size} 个策略吗？此操作无法撤销。
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>取消</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleBatchDelete}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        删除
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -773,6 +865,13 @@ export function MarketMakerManager() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={isAllSelected}
+                      onCheckedChange={(checked) => handleSelectAll(checked === true)}
+                      aria-label="全选"
+                    />
+                  </TableHead>
                   <TableHead>策略名称</TableHead>
                   <TableHead>代币</TableHead>
                   <TableHead>平台</TableHead>
@@ -786,6 +885,13 @@ export function MarketMakerManager() {
               <TableBody>
                 {strategies.map((strategy) => (
                   <TableRow key={strategy.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedStrategies.has(strategy.id)}
+                        onCheckedChange={(checked) => handleSelectStrategy(strategy.id, checked === true)}
+                        aria-label={`选择策略 ${strategy.name}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">{strategy.name}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
