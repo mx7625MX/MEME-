@@ -15,9 +15,12 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // 过滤掉敏感数据（助记词和私钥）
+    const safeWallets = wallets.map(({ mnemonic, privateKey, ...rest }) => rest);
+
     return NextResponse.json({
       success: true,
-      data: wallets,
+      data: safeWallets,
     });
   } catch (error: any) {
     console.error("Error fetching wallets:", error);

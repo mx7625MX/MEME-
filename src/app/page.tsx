@@ -402,6 +402,25 @@ export default function MemeMasterPro() {
       importData.privateKey = importPrivateKey.trim();
     }
 
+    // 安全确认对话框
+    const confirmMessage = `
+⚠️ 安全确认
+
+您即将导入一个${importType === 'mnemonic' ? '助记词' : '私钥'}钱包。
+
+重要提示：
+1. 助记词和私钥将被加密存储
+2. 这是沙箱测试环境，不适合存储大额资产
+3. 建议仅使用包含少量测试资金的钱包
+
+确认要继续导入吗？
+`;
+
+    const confirmed = window.confirm(confirmMessage);
+    if (!confirmed) {
+      return;
+    }
+
     try {
       setIsImporting(true);
       const res = await fetch(`${API_BASE}/wallets/import`, {
@@ -1748,6 +1767,22 @@ export default function MemeMasterPro() {
                 ) : (
                   // 导入钱包表单
                   <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                    {/* 安全警告 */}
+                    <div className="p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="h-5 w-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm">
+                          <p className="text-yellow-400 font-medium mb-1">安全警告</p>
+                          <p className="text-gray-300">
+                            ⚠️ 当前为沙箱测试环境，助记词和私钥将加密存储。请勿在此导入包含大量真实资产的钱包。
+                          </p>
+                          <p className="text-gray-400 mt-1">
+                            建议：使用仅包含少量测试资产的钱包进行测试。
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
                     <div>
                       <Label className="text-gray-400">钱包名称</Label>
                       <Input 

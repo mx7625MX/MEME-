@@ -20,9 +20,12 @@ export async function GET(
       );
     }
 
+    // 过滤掉敏感数据（助记词和私钥）
+    const { mnemonic, privateKey, ...safeWallet } = wallet;
+
     return NextResponse.json({
       success: true,
-      data: wallet,
+      data: safeWallet,
     });
   } catch (error: any) {
     console.error("Error fetching wallet:", error);
@@ -45,7 +48,10 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    const wallet = await walletManager.updateWallet(id, body);
+    // 过滤掉敏感数据的更新（不允许通过API更新助记词和私钥）
+    const { mnemonic, privateKey, ...safeBody } = body;
+
+    const wallet = await walletManager.updateWallet(id, safeBody);
 
     if (!wallet) {
       return NextResponse.json(
@@ -57,9 +63,12 @@ export async function PUT(
       );
     }
 
+    // 过滤掉敏感数据
+    const { mnemonic: _, privateKey: __, ...safeWallet } = wallet;
+
     return NextResponse.json({
       success: true,
-      data: wallet,
+      data: safeWallet,
     });
   } catch (error: any) {
     console.error("Error updating wallet:", error);

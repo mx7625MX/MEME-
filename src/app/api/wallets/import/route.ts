@@ -154,15 +154,16 @@ export async function POST(request: NextRequest) {
       isActive: true,
     });
 
+    // 返回数据时过滤掉敏感信息
+    const { mnemonic: _, privateKey: __, ...safeWallet } = wallet;
+
     return NextResponse.json({
       success: true,
-      data: {
-        ...wallet,
-        // Return unencrypted address only (sensitive data stays encrypted)
-      },
+      data: safeWallet,
     });
   } catch (error: any) {
-    console.error("Error importing wallet:", error);
+    // 错误日志中不包含敏感信息
+    console.error("Error importing wallet:", error.message);
     return NextResponse.json(
       {
         success: false,
