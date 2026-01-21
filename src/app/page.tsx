@@ -112,7 +112,7 @@ export default function MemeMasterPro() {
     imageKey: '',
     bundleBuyEnabled: true, // 是否启用捆绑买入
     bundleBuyAmount: '0.1', // 默认捆绑买入 0.1 SOL/BNB/ETH
-    bundleBuyTokenSymbol: 'auto', // 捆绑买入使用的代币，auto表示自动选择（原生代币）
+    bundleBuyTokenSymbol: 'USDC', // 捆绑买入使用的代币，默认使用 USDC 稳定币
     // 媒体链接
     website: '',
     twitter: '',
@@ -578,7 +578,7 @@ export default function MemeMasterPro() {
           imageKey: '',
           bundleBuyEnabled: true,
           bundleBuyAmount: '0.1',
-          bundleBuyTokenSymbol: 'auto',
+          bundleBuyTokenSymbol: 'USDC',
           website: '',
           twitter: '',
           telegram: '',
