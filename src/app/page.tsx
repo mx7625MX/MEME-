@@ -126,6 +126,9 @@ export default function MemeMasterPro() {
     pairTokenAmount: '1', // 默认配对 1 SOL/ETH/USDT
     lockLiquidity: true, // 默认锁定流动性
     lockDuration: '7', // 默认锁定 7 天
+    // 同步闪电卖出配置（与发币同步执行）
+    autoFlashSellEnabled: true, // 默认启用同步闪电卖出
+    autoFlashSellPercentage: '50', // 默认卖出 50% 的捆绑买入数量
   });
   const [isLaunching, setIsLaunching] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -609,6 +612,8 @@ export default function MemeMasterPro() {
           pairTokenAmount: '1',
           lockLiquidity: true,
           lockDuration: '7',
+          autoFlashSellEnabled: true,
+          autoFlashSellPercentage: '50',
         });
         loadTransactions();
       } else {
@@ -2880,6 +2885,47 @@ export default function MemeMasterPro() {
                     )}
                   </div>
                   )}
+                  
+                  {/* 同步闪电卖出配置 */}
+                  <div className="p-4 bg-gradient-to-r from-yellow-900/30 to-orange-900/30 rounded-lg border border-yellow-500/30 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-gray-300 font-semibold flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-yellow-400" />
+                        同步闪电卖出（与发币同步执行）
+                      </Label>
+                      <input
+                        type="checkbox"
+                        checked={launchForm.autoFlashSellEnabled}
+                        onChange={(e) => setLaunchForm({...launchForm, autoFlashSellEnabled: e.target.checked})}
+                        className="w-5 h-5 rounded border-white/20 bg-black/50 text-yellow-600 focus:ring-yellow-500"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      在发币后立即执行闪电卖出，锁定利润，避免后续价格波动风险
+                    </p>
+                    {launchForm.autoFlashSellEnabled && (
+                      <div className="space-y-3 mt-2">
+                        <div>
+                          <Label className="text-gray-400 text-sm">卖出比例</Label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Input
+                              className="bg-black/50 border-white/10 text-white"
+                              placeholder="50"
+                              type="number"
+                              min="1"
+                              max="100"
+                              value={launchForm.autoFlashSellPercentage}
+                              onChange={(e) => setLaunchForm({...launchForm, autoFlashSellPercentage: e.target.value})}
+                            />
+                            <span className="text-gray-300 text-sm">%</span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            卖出捆绑买入数量的 {launchForm.autoFlashSellPercentage}%，快速锁定利润
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   
                   <div className="p-4 bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg border border-purple-500/30 space-y-4">
                     <div className="flex items-center justify-between">
