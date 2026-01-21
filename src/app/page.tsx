@@ -112,7 +112,7 @@ export default function MemeMasterPro() {
     imageKey: '',
     bundleBuyEnabled: true, // 是否启用捆绑买入
     bundleBuyAmount: '0.1', // 默认捆绑买入 0.1 SOL/BNB/ETH
-    bundleBuyTokenSymbol: 'USDC', // 捆绑买入使用的代币，默认使用 USDC 稳定币
+    bundleBuyTokenSymbol: '', // 捆绑买入使用的代币，默认不选中
     // 媒体链接
     website: '',
     twitter: '',
@@ -556,6 +556,12 @@ export default function MemeMasterPro() {
       return;
     }
     
+    // 验证捆绑买入配置
+    if (launchForm.bundleBuyEnabled && !launchForm.bundleBuyTokenSymbol) {
+      alert('请选择捆绑买入的购买代币');
+      return;
+    }
+    
     try {
       setIsLaunching(true);
       const res = await fetch(`${API_BASE}/tokens/launch`, {
@@ -578,7 +584,7 @@ export default function MemeMasterPro() {
           imageKey: '',
           bundleBuyEnabled: true,
           bundleBuyAmount: '0.1',
-          bundleBuyTokenSymbol: 'USDC',
+          bundleBuyTokenSymbol: '',
           website: '',
           twitter: '',
           telegram: '',
@@ -2884,7 +2890,7 @@ export default function MemeMasterPro() {
                     {launchForm.bundleBuyEnabled && (
                       <div className="space-y-3 pt-3 border-t border-white/10">
                         <div className="mb-3">
-                          <Label className="text-gray-400 text-sm">购买代币</Label>
+                          <Label className="text-gray-400 text-sm">购买代币 <span className="text-red-400">*</span></Label>
                           <select
                             className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2 text-sm"
                             value={launchForm.bundleBuyTokenSymbol}
@@ -2897,6 +2903,7 @@ export default function MemeMasterPro() {
                                 case 'solana':
                                   return (
                                     <>
+                                      <option value="">请选择购买代币</option>
                                       <option value="USDC">USDC</option>
                                       <option value="SOL">SOL</option>
                                       <option value="USDT">USDT</option>
@@ -2905,6 +2912,7 @@ export default function MemeMasterPro() {
                                 case 'bsc':
                                   return (
                                     <>
+                                      <option value="">请选择购买代币</option>
                                       <option value="USDC">USDC</option>
                                       <option value="USDT">USDT</option>
                                       <option value="BNB">BNB</option>
@@ -2913,6 +2921,7 @@ export default function MemeMasterPro() {
                                 case 'eth':
                                   return (
                                     <>
+                                      <option value="">请选择购买代币</option>
                                       <option value="USDC">USDC</option>
                                       <option value="USDT">USDT</option>
                                       <option value="ETH">ETH</option>
