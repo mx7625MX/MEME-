@@ -31,7 +31,8 @@ import {
   Filter,
   Copy,
   Trash2,
-  Plus
+  Plus,
+  Eye
 } from 'lucide-react';
 
 import { INFLUENCERS, Influencer, INFLUENCERS_BY_CATEGORY, searchInfluencers } from '@/config/influencers';
@@ -1445,6 +1446,7 @@ export default function MemeMasterPro() {
             <TabsTrigger value="history">交易历史</TabsTrigger>
             <TabsTrigger value="autotrade">自动交易</TabsTrigger>
             <TabsTrigger value="market-maker">做市值</TabsTrigger>
+            <TabsTrigger value="privacy">隐私保护</TabsTrigger>
           </TabsList>
 
           {/* 仪表盘 */}
@@ -1508,6 +1510,132 @@ export default function MemeMasterPro() {
           {/* 做市值策略管理 */}
           <TabsContent value="market-maker" className="space-y-4">
             <MarketMakerManager />
+          </TabsContent>
+
+          {/* 隐私保护 */}
+          <TabsContent value="privacy" className="space-y-4">
+            <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Shield className="h-6 w-6 text-purple-400" />
+                  隐私保护中心
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  保护您的交易隐私，防止链上追踪
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* 功能卡片 */}
+                <div className="grid gap-6 md:grid-cols-3">
+                  {/* 隐私保护转账 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/transfer'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-purple-400" />
+                        隐私保护转账
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        通过多跳中转和拆分交易，保护您的转账隐私
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 多跳中转保护</p>
+                        <p>✅ 拆分交易功能</p>
+                        <p>✅ 可选隐私级别</p>
+                        <p>✅ 自动路径规划</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入隐私转账
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* 隐私配置 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/config'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Settings className="h-5 w-5 text-purple-400" />
+                        隐私配置
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        为您的钱包配置个性化隐私保护参数
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 设置隐私级别</p>
+                        <p>✅ 自定义中转跳数</p>
+                        <p>✅ 拆分交易数量</p>
+                        <p>✅ 随机延迟配置</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入隐私配置
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* 钱包追踪分析 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/analyze'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Eye className="h-5 w-5 text-purple-400" />
+                        钱包追踪分析
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        分析钱包的追踪风险，获取隐私保护建议
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 隐私评分</p>
+                        <p>✅ 追踪风险分析</p>
+                        <p>✅ 关联检测</p>
+                        <p>✅ 改进建议</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入追踪分析
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* 隐私保护说明 */}
+                <Card className="bg-slate-900/50 border-purple-500/20">
+                  <CardHeader>
+                    <CardTitle className="text-white">隐私保护说明</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4 text-gray-400">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-400" />
+                          如何保护隐私
+                        </h4>
+                        <ul className="space-y-2 text-sm">
+                          <li>• 使用隐私保护转账避免直接关联</li>
+                          <li>• 设置合适的隐私级别</li>
+                          <li>• 定期分析钱包追踪风险</li>
+                          <li>• 避免使用同一钱包进行多次交易</li>
+                        </ul>
+                      </div>
+                      <div className="p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                          注意事项
+                        </h4>
+                        <ul className="space-y-2 text-sm">
+                          <li>• 隐私保护会增加交易费用</li>
+                          <li>• 高级别保护需要更多时间</li>
+                          <li>• 请确保接收地址正确</li>
+                          <li>• 隐私保护不能完全匿名</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* 大V分析结果弹窗 */}
@@ -1941,6 +2069,132 @@ export default function MemeMasterPro() {
             <MarketMakerManager />
           </TabsContent>
 
+          {/* 隐私保护 */}
+          <TabsContent value="privacy" className="space-y-4">
+            <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Shield className="h-6 w-6 text-purple-400" />
+                  隐私保护中心
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  保护您的交易隐私，防止链上追踪
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* 功能卡片 */}
+                <div className="grid gap-6 md:grid-cols-3">
+                  {/* 隐私保护转账 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/transfer'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-purple-400" />
+                        隐私保护转账
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        通过多跳中转和拆分交易，保护您的转账隐私
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 多跳中转保护</p>
+                        <p>✅ 拆分交易功能</p>
+                        <p>✅ 可选隐私级别</p>
+                        <p>✅ 自动路径规划</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入隐私转账
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* 隐私配置 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/config'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Settings className="h-5 w-5 text-purple-400" />
+                        隐私配置
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        为您的钱包配置个性化隐私保护参数
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 设置隐私级别</p>
+                        <p>✅ 自定义中转跳数</p>
+                        <p>✅ 拆分交易数量</p>
+                        <p>✅ 随机延迟配置</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入隐私配置
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* 钱包追踪分析 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/analyze'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Eye className="h-5 w-5 text-purple-400" />
+                        钱包追踪分析
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        分析钱包的追踪风险，获取隐私保护建议
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 隐私评分</p>
+                        <p>✅ 追踪风险分析</p>
+                        <p>✅ 关联检测</p>
+                        <p>✅ 改进建议</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入追踪分析
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* 隐私保护说明 */}
+                <Card className="bg-slate-900/50 border-purple-500/20">
+                  <CardHeader>
+                    <CardTitle className="text-white">隐私保护说明</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4 text-gray-400">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-400" />
+                          如何保护隐私
+                        </h4>
+                        <ul className="space-y-2 text-sm">
+                          <li>• 使用隐私保护转账避免直接关联</li>
+                          <li>• 设置合适的隐私级别</li>
+                          <li>• 定期分析钱包追踪风险</li>
+                          <li>• 避免使用同一钱包进行多次交易</li>
+                        </ul>
+                      </div>
+                      <div className="p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                          注意事项
+                        </h4>
+                        <ul className="space-y-2 text-sm">
+                          <li>• 隐私保护会增加交易费用</li>
+                          <li>• 高级别保护需要更多时间</li>
+                          <li>• 请确保接收地址正确</li>
+                          <li>• 隐私保护不能完全匿名</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* 大V分析结果弹窗 */}
           {showAnalysisModal && influencerAnalysis && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.9)" }}>
@@ -2168,6 +2422,132 @@ export default function MemeMasterPro() {
           {/* 做市值策略管理 */}
           <TabsContent value="market-maker" className="space-y-4">
             <MarketMakerManager />
+          </TabsContent>
+
+          {/* 隐私保护 */}
+          <TabsContent value="privacy" className="space-y-4">
+            <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Shield className="h-6 w-6 text-purple-400" />
+                  隐私保护中心
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  保护您的交易隐私，防止链上追踪
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* 功能卡片 */}
+                <div className="grid gap-6 md:grid-cols-3">
+                  {/* 隐私保护转账 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/transfer'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-purple-400" />
+                        隐私保护转账
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        通过多跳中转和拆分交易，保护您的转账隐私
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 多跳中转保护</p>
+                        <p>✅ 拆分交易功能</p>
+                        <p>✅ 可选隐私级别</p>
+                        <p>✅ 自动路径规划</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入隐私转账
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* 隐私配置 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/config'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Settings className="h-5 w-5 text-purple-400" />
+                        隐私配置
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        为您的钱包配置个性化隐私保护参数
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 设置隐私级别</p>
+                        <p>✅ 自定义中转跳数</p>
+                        <p>✅ 拆分交易数量</p>
+                        <p>✅ 随机延迟配置</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入隐私配置
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* 钱包追踪分析 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/analyze'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Eye className="h-5 w-5 text-purple-400" />
+                        钱包追踪分析
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        分析钱包的追踪风险，获取隐私保护建议
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 隐私评分</p>
+                        <p>✅ 追踪风险分析</p>
+                        <p>✅ 关联检测</p>
+                        <p>✅ 改进建议</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入追踪分析
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* 隐私保护说明 */}
+                <Card className="bg-slate-900/50 border-purple-500/20">
+                  <CardHeader>
+                    <CardTitle className="text-white">隐私保护说明</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4 text-gray-400">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-400" />
+                          如何保护隐私
+                        </h4>
+                        <ul className="space-y-2 text-sm">
+                          <li>• 使用隐私保护转账避免直接关联</li>
+                          <li>• 设置合适的隐私级别</li>
+                          <li>• 定期分析钱包追踪风险</li>
+                          <li>• 避免使用同一钱包进行多次交易</li>
+                        </ul>
+                      </div>
+                      <div className="p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                          注意事项
+                        </h4>
+                        <ul className="space-y-2 text-sm">
+                          <li>• 隐私保护会增加交易费用</li>
+                          <li>• 高级别保护需要更多时间</li>
+                          <li>• 请确保接收地址正确</li>
+                          <li>• 隐私保护不能完全匿名</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* 大V分析结果弹窗 */}
@@ -2970,6 +3350,132 @@ export default function MemeMasterPro() {
             <MarketMakerManager />
           </TabsContent>
 
+          {/* 隐私保护 */}
+          <TabsContent value="privacy" className="space-y-4">
+            <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Shield className="h-6 w-6 text-purple-400" />
+                  隐私保护中心
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  保护您的交易隐私，防止链上追踪
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* 功能卡片 */}
+                <div className="grid gap-6 md:grid-cols-3">
+                  {/* 隐私保护转账 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/transfer'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-purple-400" />
+                        隐私保护转账
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        通过多跳中转和拆分交易，保护您的转账隐私
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 多跳中转保护</p>
+                        <p>✅ 拆分交易功能</p>
+                        <p>✅ 可选隐私级别</p>
+                        <p>✅ 自动路径规划</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入隐私转账
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* 隐私配置 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/config'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Settings className="h-5 w-5 text-purple-400" />
+                        隐私配置
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        为您的钱包配置个性化隐私保护参数
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 设置隐私级别</p>
+                        <p>✅ 自定义中转跳数</p>
+                        <p>✅ 拆分交易数量</p>
+                        <p>✅ 随机延迟配置</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入隐私配置
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* 钱包追踪分析 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/analyze'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Eye className="h-5 w-5 text-purple-400" />
+                        钱包追踪分析
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        分析钱包的追踪风险，获取隐私保护建议
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 隐私评分</p>
+                        <p>✅ 追踪风险分析</p>
+                        <p>✅ 关联检测</p>
+                        <p>✅ 改进建议</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入追踪分析
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* 隐私保护说明 */}
+                <Card className="bg-slate-900/50 border-purple-500/20">
+                  <CardHeader>
+                    <CardTitle className="text-white">隐私保护说明</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4 text-gray-400">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-400" />
+                          如何保护隐私
+                        </h4>
+                        <ul className="space-y-2 text-sm">
+                          <li>• 使用隐私保护转账避免直接关联</li>
+                          <li>• 设置合适的隐私级别</li>
+                          <li>• 定期分析钱包追踪风险</li>
+                          <li>• 避免使用同一钱包进行多次交易</li>
+                        </ul>
+                      </div>
+                      <div className="p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                          注意事项
+                        </h4>
+                        <ul className="space-y-2 text-sm">
+                          <li>• 隐私保护会增加交易费用</li>
+                          <li>• 高级别保护需要更多时间</li>
+                          <li>• 请确保接收地址正确</li>
+                          <li>• 隐私保护不能完全匿名</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* 大V分析结果弹窗 */}
           {showAnalysisModal && influencerAnalysis && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.9)" }}>
@@ -3613,6 +4119,132 @@ export default function MemeMasterPro() {
           {/* 做市值策略管理 */}
           <TabsContent value="market-maker" className="space-y-4">
             <MarketMakerManager />
+          </TabsContent>
+
+          {/* 隐私保护 */}
+          <TabsContent value="privacy" className="space-y-4">
+            <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Shield className="h-6 w-6 text-purple-400" />
+                  隐私保护中心
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  保护您的交易隐私，防止链上追踪
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* 功能卡片 */}
+                <div className="grid gap-6 md:grid-cols-3">
+                  {/* 隐私保护转账 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/transfer'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-purple-400" />
+                        隐私保护转账
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        通过多跳中转和拆分交易，保护您的转账隐私
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 多跳中转保护</p>
+                        <p>✅ 拆分交易功能</p>
+                        <p>✅ 可选隐私级别</p>
+                        <p>✅ 自动路径规划</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入隐私转账
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* 隐私配置 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/config'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Settings className="h-5 w-5 text-purple-400" />
+                        隐私配置
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        为您的钱包配置个性化隐私保护参数
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 设置隐私级别</p>
+                        <p>✅ 自定义中转跳数</p>
+                        <p>✅ 拆分交易数量</p>
+                        <p>✅ 随机延迟配置</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入隐私配置
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* 钱包追踪分析 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/analyze'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Eye className="h-5 w-5 text-purple-400" />
+                        钱包追踪分析
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        分析钱包的追踪风险，获取隐私保护建议
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 隐私评分</p>
+                        <p>✅ 追踪风险分析</p>
+                        <p>✅ 关联检测</p>
+                        <p>✅ 改进建议</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入追踪分析
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* 隐私保护说明 */}
+                <Card className="bg-slate-900/50 border-purple-500/20">
+                  <CardHeader>
+                    <CardTitle className="text-white">隐私保护说明</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4 text-gray-400">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-400" />
+                          如何保护隐私
+                        </h4>
+                        <ul className="space-y-2 text-sm">
+                          <li>• 使用隐私保护转账避免直接关联</li>
+                          <li>• 设置合适的隐私级别</li>
+                          <li>• 定期分析钱包追踪风险</li>
+                          <li>• 避免使用同一钱包进行多次交易</li>
+                        </ul>
+                      </div>
+                      <div className="p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                          注意事项
+                        </h4>
+                        <ul className="space-y-2 text-sm">
+                          <li>• 隐私保护会增加交易费用</li>
+                          <li>• 高级别保护需要更多时间</li>
+                          <li>• 请确保接收地址正确</li>
+                          <li>• 隐私保护不能完全匿名</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* 大V分析结果弹窗 */}
@@ -4487,6 +5119,132 @@ export default function MemeMasterPro() {
             <MarketMakerManager />
           </TabsContent>
 
+          {/* 隐私保护 */}
+          <TabsContent value="privacy" className="space-y-4">
+            <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Shield className="h-6 w-6 text-purple-400" />
+                  隐私保护中心
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  保护您的交易隐私，防止链上追踪
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* 功能卡片 */}
+                <div className="grid gap-6 md:grid-cols-3">
+                  {/* 隐私保护转账 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/transfer'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-purple-400" />
+                        隐私保护转账
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        通过多跳中转和拆分交易，保护您的转账隐私
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 多跳中转保护</p>
+                        <p>✅ 拆分交易功能</p>
+                        <p>✅ 可选隐私级别</p>
+                        <p>✅ 自动路径规划</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入隐私转账
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* 隐私配置 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/config'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Settings className="h-5 w-5 text-purple-400" />
+                        隐私配置
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        为您的钱包配置个性化隐私保护参数
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 设置隐私级别</p>
+                        <p>✅ 自定义中转跳数</p>
+                        <p>✅ 拆分交易数量</p>
+                        <p>✅ 随机延迟配置</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入隐私配置
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* 钱包追踪分析 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/analyze'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Eye className="h-5 w-5 text-purple-400" />
+                        钱包追踪分析
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        分析钱包的追踪风险，获取隐私保护建议
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 隐私评分</p>
+                        <p>✅ 追踪风险分析</p>
+                        <p>✅ 关联检测</p>
+                        <p>✅ 改进建议</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入追踪分析
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* 隐私保护说明 */}
+                <Card className="bg-slate-900/50 border-purple-500/20">
+                  <CardHeader>
+                    <CardTitle className="text-white">隐私保护说明</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4 text-gray-400">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-400" />
+                          如何保护隐私
+                        </h4>
+                        <ul className="space-y-2 text-sm">
+                          <li>• 使用隐私保护转账避免直接关联</li>
+                          <li>• 设置合适的隐私级别</li>
+                          <li>• 定期分析钱包追踪风险</li>
+                          <li>• 避免使用同一钱包进行多次交易</li>
+                        </ul>
+                      </div>
+                      <div className="p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                          注意事项
+                        </h4>
+                        <ul className="space-y-2 text-sm">
+                          <li>• 隐私保护会增加交易费用</li>
+                          <li>• 高级别保护需要更多时间</li>
+                          <li>• 请确保接收地址正确</li>
+                          <li>• 隐私保护不能完全匿名</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* 大V分析结果弹窗 */}
           {showAnalysisModal && influencerAnalysis && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.9)" }}>
@@ -4772,6 +5530,132 @@ export default function MemeMasterPro() {
             <MarketMakerManager />
           </TabsContent>
 
+          {/* 隐私保护 */}
+          <TabsContent value="privacy" className="space-y-4">
+            <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Shield className="h-6 w-6 text-purple-400" />
+                  隐私保护中心
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  保护您的交易隐私，防止链上追踪
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* 功能卡片 */}
+                <div className="grid gap-6 md:grid-cols-3">
+                  {/* 隐私保护转账 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/transfer'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-purple-400" />
+                        隐私保护转账
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        通过多跳中转和拆分交易，保护您的转账隐私
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 多跳中转保护</p>
+                        <p>✅ 拆分交易功能</p>
+                        <p>✅ 可选隐私级别</p>
+                        <p>✅ 自动路径规划</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入隐私转账
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* 隐私配置 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/config'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Settings className="h-5 w-5 text-purple-400" />
+                        隐私配置
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        为您的钱包配置个性化隐私保护参数
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 设置隐私级别</p>
+                        <p>✅ 自定义中转跳数</p>
+                        <p>✅ 拆分交易数量</p>
+                        <p>✅ 随机延迟配置</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入隐私配置
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* 钱包追踪分析 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/analyze'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Eye className="h-5 w-5 text-purple-400" />
+                        钱包追踪分析
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        分析钱包的追踪风险，获取隐私保护建议
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 隐私评分</p>
+                        <p>✅ 追踪风险分析</p>
+                        <p>✅ 关联检测</p>
+                        <p>✅ 改进建议</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入追踪分析
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* 隐私保护说明 */}
+                <Card className="bg-slate-900/50 border-purple-500/20">
+                  <CardHeader>
+                    <CardTitle className="text-white">隐私保护说明</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4 text-gray-400">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-400" />
+                          如何保护隐私
+                        </h4>
+                        <ul className="space-y-2 text-sm">
+                          <li>• 使用隐私保护转账避免直接关联</li>
+                          <li>• 设置合适的隐私级别</li>
+                          <li>• 定期分析钱包追踪风险</li>
+                          <li>• 避免使用同一钱包进行多次交易</li>
+                        </ul>
+                      </div>
+                      <div className="p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                          注意事项
+                        </h4>
+                        <ul className="space-y-2 text-sm">
+                          <li>• 隐私保护会增加交易费用</li>
+                          <li>• 高级别保护需要更多时间</li>
+                          <li>• 请确保接收地址正确</li>
+                          <li>• 隐私保护不能完全匿名</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* 大V分析结果弹窗 */}
           {showAnalysisModal && influencerAnalysis && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.9)" }}>
@@ -5045,6 +5929,132 @@ export default function MemeMasterPro() {
           {/* 做市值策略管理 */}
           <TabsContent value="market-maker" className="space-y-4">
             <MarketMakerManager />
+          </TabsContent>
+
+          {/* 隐私保护 */}
+          <TabsContent value="privacy" className="space-y-4">
+            <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Shield className="h-6 w-6 text-purple-400" />
+                  隐私保护中心
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  保护您的交易隐私，防止链上追踪
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* 功能卡片 */}
+                <div className="grid gap-6 md:grid-cols-3">
+                  {/* 隐私保护转账 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/transfer'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-purple-400" />
+                        隐私保护转账
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        通过多跳中转和拆分交易，保护您的转账隐私
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 多跳中转保护</p>
+                        <p>✅ 拆分交易功能</p>
+                        <p>✅ 可选隐私级别</p>
+                        <p>✅ 自动路径规划</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入隐私转账
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* 隐私配置 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/config'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Settings className="h-5 w-5 text-purple-400" />
+                        隐私配置
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        为您的钱包配置个性化隐私保护参数
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 设置隐私级别</p>
+                        <p>✅ 自定义中转跳数</p>
+                        <p>✅ 拆分交易数量</p>
+                        <p>✅ 随机延迟配置</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入隐私配置
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* 钱包追踪分析 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/analyze'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Eye className="h-5 w-5 text-purple-400" />
+                        钱包追踪分析
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        分析钱包的追踪风险，获取隐私保护建议
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 隐私评分</p>
+                        <p>✅ 追踪风险分析</p>
+                        <p>✅ 关联检测</p>
+                        <p>✅ 改进建议</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入追踪分析
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* 隐私保护说明 */}
+                <Card className="bg-slate-900/50 border-purple-500/20">
+                  <CardHeader>
+                    <CardTitle className="text-white">隐私保护说明</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4 text-gray-400">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-400" />
+                          如何保护隐私
+                        </h4>
+                        <ul className="space-y-2 text-sm">
+                          <li>• 使用隐私保护转账避免直接关联</li>
+                          <li>• 设置合适的隐私级别</li>
+                          <li>• 定期分析钱包追踪风险</li>
+                          <li>• 避免使用同一钱包进行多次交易</li>
+                        </ul>
+                      </div>
+                      <div className="p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                          注意事项
+                        </h4>
+                        <ul className="space-y-2 text-sm">
+                          <li>• 隐私保护会增加交易费用</li>
+                          <li>• 高级别保护需要更多时间</li>
+                          <li>• 请确保接收地址正确</li>
+                          <li>• 隐私保护不能完全匿名</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* 大V分析结果弹窗 */}
@@ -5375,6 +6385,132 @@ export default function MemeMasterPro() {
           {/* 做市值策略管理 */}
           <TabsContent value="market-maker" className="space-y-4">
             <MarketMakerManager />
+          </TabsContent>
+
+          {/* 隐私保护 */}
+          <TabsContent value="privacy" className="space-y-4">
+            <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Shield className="h-6 w-6 text-purple-400" />
+                  隐私保护中心
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  保护您的交易隐私，防止链上追踪
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* 功能卡片 */}
+                <div className="grid gap-6 md:grid-cols-3">
+                  {/* 隐私保护转账 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/transfer'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-purple-400" />
+                        隐私保护转账
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        通过多跳中转和拆分交易，保护您的转账隐私
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 多跳中转保护</p>
+                        <p>✅ 拆分交易功能</p>
+                        <p>✅ 可选隐私级别</p>
+                        <p>✅ 自动路径规划</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入隐私转账
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* 隐私配置 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/config'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Settings className="h-5 w-5 text-purple-400" />
+                        隐私配置
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        为您的钱包配置个性化隐私保护参数
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 设置隐私级别</p>
+                        <p>✅ 自定义中转跳数</p>
+                        <p>✅ 拆分交易数量</p>
+                        <p>✅ 随机延迟配置</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入隐私配置
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* 钱包追踪分析 */}
+                  <Card className="bg-purple-900/20 border-purple-500/30 hover:border-purple-500/60 transition-colors cursor-pointer" onClick={() => window.location.href = '/privacy/analyze'}>
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Eye className="h-5 w-5 text-purple-400" />
+                        钱包追踪分析
+                      </CardTitle>
+                      <CardDescription className="text-gray-400">
+                        分析钱包的追踪风险，获取隐私保护建议
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-400">
+                        <p>✅ 隐私评分</p>
+                        <p>✅ 追踪风险分析</p>
+                        <p>✅ 关联检测</p>
+                        <p>✅ 改进建议</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                        进入追踪分析
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* 隐私保护说明 */}
+                <Card className="bg-slate-900/50 border-purple-500/20">
+                  <CardHeader>
+                    <CardTitle className="text-white">隐私保护说明</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4 text-gray-400">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-400" />
+                          如何保护隐私
+                        </h4>
+                        <ul className="space-y-2 text-sm">
+                          <li>• 使用隐私保护转账避免直接关联</li>
+                          <li>• 设置合适的隐私级别</li>
+                          <li>• 定期分析钱包追踪风险</li>
+                          <li>• 避免使用同一钱包进行多次交易</li>
+                        </ul>
+                      </div>
+                      <div className="p-4 bg-black/30 rounded-lg border border-white/10">
+                        <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                          注意事项
+                        </h4>
+                        <ul className="space-y-2 text-sm">
+                          <li>• 隐私保护会增加交易费用</li>
+                          <li>• 高级别保护需要更多时间</li>
+                          <li>• 请确保接收地址正确</li>
+                          <li>• 隐私保护不能完全匿名</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* 大V分析结果弹窗 */}
