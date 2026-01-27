@@ -88,6 +88,7 @@ export const tokens = pgTable(
     address: varchar("address", { length: 256 }).notNull().unique(),
     symbol: varchar("symbol", { length: 32 }).notNull(),
     name: varchar("name", { length: 128 }),
+    description: text("description"),
     decimals: integer("decimals").notNull().default(18),
     totalSupply: decimal("total_supply", { precision: 30, scale: 18 }),
     liquidity: decimal("liquidity", { precision: 30, scale: 18 }),

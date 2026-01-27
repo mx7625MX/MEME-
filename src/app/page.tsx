@@ -116,6 +116,7 @@ export default function MemeMasterPro() {
     walletId: '',
     tokenName: '',
     tokenSymbol: '',
+    tokenDescription: '',
     totalSupply: '',
     liquidity: '',
     imageUrl: '',
@@ -696,6 +697,7 @@ export default function MemeMasterPro() {
           walletId: '',
           tokenName: '',
           tokenSymbol: '',
+          tokenDescription: '',
           totalSupply: '',
           liquidity: '',
           imageUrl: '',
@@ -1396,6 +1398,7 @@ export default function MemeMasterPro() {
       ...launchForm,
       tokenName: suggestion.name,
       tokenSymbol: suggestion.symbol,
+      tokenDescription: suggestion.description || '',
       totalSupply: suggestion.totalSupply,
       liquidity: suggestion.liquidity,
     });
@@ -3870,6 +3873,15 @@ export default function MemeMasterPro() {
                       placeholder="PEPE"
                       value={launchForm.tokenSymbol}
                       onChange={(e) => setLaunchForm({...launchForm, tokenSymbol: e.target.value.toUpperCase()})}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">代币介绍</Label>
+                    <textarea
+                      className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2 min-h-[100px] resize-y"
+                      placeholder="简要介绍你的代币，比如代币的故事、用途、愿景等..."
+                      value={launchForm.tokenDescription}
+                      onChange={(e) => setLaunchForm({...launchForm, tokenDescription: e.target.value})}
                     />
                   </div>
                   <div>

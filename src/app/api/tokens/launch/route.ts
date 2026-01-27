@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // 验证必填字段
-    const { walletId, chain, platform, tokenName, tokenSymbol, totalSupply, liquidity, imageUrl, imageKey, bundleBuyEnabled, useSpecifiedTokenForBundleBuy, bundleBuyAmount, bundleBuyTokenSymbol, website, twitter, telegram, discord } = body;
+    const { walletId, chain, platform, tokenName, tokenSymbol, tokenDescription, totalSupply, liquidity, imageUrl, imageKey, bundleBuyEnabled, useSpecifiedTokenForBundleBuy, bundleBuyAmount, bundleBuyTokenSymbol, website, twitter, telegram, discord } = body;
 
     if (!walletId || !chain || !platform || !tokenName || !tokenSymbol || !totalSupply) {
       return NextResponse.json(
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     // 创建代币记录
     const tokenMetadata: any = {
       creator: walletId,
-      description: `${tokenName} (${tokenSymbol}) - Launch via Meme Master Pro`,
+      description: tokenDescription || `${tokenName} (${tokenSymbol}) - Launch via Meme Master Pro`,
     };
     
     // 如果有图片信息，添加到 metadata 中
@@ -110,6 +110,7 @@ export async function POST(request: NextRequest) {
       address: mockTokenAddress,
       symbol: tokenSymbol,
       name: tokenName,
+      description: tokenDescription || '',
       decimals: 18,
       totalSupply: totalSupply.toString(),
       liquidity: liquidity ? liquidity.toString() : '0',
@@ -117,7 +118,7 @@ export async function POST(request: NextRequest) {
       isHot: false,
       website: (website && website.trim()) || null,
       twitter: (twitter && twitter.trim()) || null,
-      telegram: (telegram && telegram.trim()) || null,
+      telegram: (telegram && twitter.trim()) || null,
       discord: (discord && discord.trim()) || null,
       metadata: tokenMetadata
     };
