@@ -111,6 +111,7 @@ export default function MemeMasterPro() {
   // 发币相关状态
   const [launchForm, setLaunchForm] = useState({
     platform: 'raydium', // 发行平台：pump.fun, four.meme, raydium, uniswap, pancakeswap
+    chain: 'solana', // 区块链
     walletId: '',
     tokenName: '',
     tokenSymbol: '',
@@ -681,6 +682,7 @@ export default function MemeMasterPro() {
         alert(data.data.message);
         setLaunchForm({
           platform: 'raydium',
+          chain: 'solana',
           walletId: '',
           tokenName: '',
           tokenSymbol: '',
@@ -3695,7 +3697,14 @@ export default function MemeMasterPro() {
                     <select
                       className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2"
                       value={launchForm.walletId}
-                      onChange={(e) => setLaunchForm({...launchForm, walletId: e.target.value})}
+                      onChange={(e) => {
+                        const selectedWallet = wallets.find(w => w.id === e.target.value);
+                        setLaunchForm({
+                          ...launchForm,
+                          walletId: e.target.value,
+                          chain: selectedWallet?.chain || 'solana'
+                        });
+                      }}
                     >
                       <option value="">选择钱包</option>
                       {wallets.map((wallet) => (
