@@ -43,8 +43,8 @@ export async function POST(request: NextRequest) {
     }
     
     const results = {
-      success: [],
-      failed: [],
+      success: [] as Array<{ walletId: string; collected: number }>,
+      failed: [] as Array<{ walletId: string; reason: string }>,
       totalCollected: 0,
       totalTransactions: 0
     };
