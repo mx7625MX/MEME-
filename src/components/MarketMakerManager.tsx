@@ -179,6 +179,20 @@ export function MarketMakerManager() {
     }
   };
 
+  // 支持的链配置
+  const SUPPORTED_CHAINS = [
+    { value: 'solana', label: 'Solana', nativeToken: 'SOL', icon: '◎' },
+    { value: 'ethereum', label: 'Ethereum', nativeToken: 'ETH', icon: '⟠' },
+    { value: 'bsc', label: 'BSC (BNB Chain)', nativeToken: 'BNB', icon: '🟡' },
+    { value: 'polygon', label: 'Polygon (MATIC)', nativeToken: 'MATIC', icon: '🟣' },
+    { value: 'avalanche', label: 'Avalanche (AVAX)', nativeToken: 'AVAX', icon: '🔺' },
+    { value: 'arbitrum', label: 'Arbitrum', nativeToken: 'ETH', icon: '🔵' },
+    { value: 'optimism', label: 'Optimism', nativeToken: 'ETH', icon: '🔴' },
+    { value: 'base', label: 'Base', nativeToken: 'ETH', icon: '🔷' },
+    { value: 'sui', label: 'Sui', nativeToken: 'SUI', icon: '🌊' },
+    { value: 'aptos', label: 'Aptos', nativeToken: 'APT', icon: '🅰️' },
+  ];
+
   // 批量创建钱包
   const handleBatchCreateWallets = async () => {
     if (!batchCreateForm.count || batchCreateForm.count <= 0) {
@@ -819,8 +833,12 @@ export function MarketMakerManager() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="solana">Solana</SelectItem>
-                        <SelectItem value="ethereum">Ethereum</SelectItem>
+                        {SUPPORTED_CHAINS.map(chain => (
+                          <SelectItem key={chain.value} value={chain.value}>
+                            <span className="mr-2">{chain.icon}</span>
+                            {chain.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1008,8 +1026,12 @@ export function MarketMakerManager() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="solana">Solana</SelectItem>
-                      <SelectItem value="ethereum">Ethereum</SelectItem>
+                      {SUPPORTED_CHAINS.map(chain => (
+                        <SelectItem key={chain.value} value={chain.value}>
+                          <span className="mr-2">{chain.icon}</span>
+                          {chain.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1168,8 +1190,12 @@ export function MarketMakerManager() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="solana">Solana</SelectItem>
-                      <SelectItem value="ethereum">Ethereum</SelectItem>
+                      {SUPPORTED_CHAINS.map(chain => (
+                        <SelectItem key={chain.value} value={chain.value}>
+                          <span className="mr-2">{chain.icon}</span>
+                          {chain.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1331,8 +1357,12 @@ export function MarketMakerManager() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="solana">Solana</SelectItem>
-                        <SelectItem value="ethereum">Ethereum</SelectItem>
+                        {SUPPORTED_CHAINS.map(chain => (
+                          <SelectItem key={chain.value} value={chain.value}>
+                            <span className="mr-2">{chain.icon}</span>
+                            {chain.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
