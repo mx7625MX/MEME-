@@ -252,9 +252,7 @@ export class PrivacyProtectionService {
   private async executeSolanaTransfer(hop: TransferHop): Promise<boolean> {
     // 查询源钱包私钥
     const db = await getDb();
-    const walletRecord = await db.query.wallets.findFirst({
-      where: eq(wallets.address, hop.fromAddress),
-    });
+    const [walletRecord] = await db.select().from(wallets).where(eq(wallets.address, hop.fromAddress));
 
     if (!walletRecord) return false;
 
@@ -286,9 +284,7 @@ export class PrivacyProtectionService {
     if (!provider) return false;
 
     const db = await getDb();
-    const walletRecord = await db.query.wallets.findFirst({
-      where: eq(wallets.address, hop.fromAddress),
-    });
+    const [walletRecord] = await db.select().from(wallets).where(eq(wallets.address, hop.fromAddress));
 
     if (!walletRecord) return false;
 
@@ -363,9 +359,7 @@ export class PrivacyProtectionService {
    */
   async generateWalletPrivacyReport(walletId: string): Promise<WalletPrivacyReport> {
     const db = await getDb();
-    const walletRecord = await db.query.wallets.findFirst({
-      where: eq(wallets.id, walletId),
-    });
+    const [walletRecord] = await db.select().from(wallets).where(eq(wallets.id, walletId));
 
     if (!walletRecord) {
       throw new Error('Wallet not found');
@@ -556,9 +550,7 @@ export class PrivacyProtectionService {
 
   private async getPrivacyConfig(walletId: string): Promise<PrivacyConfig> {
     const db = await getDb();
-    const config = await db.query.privacyConfigs.findFirst({
-      where: eq(privacyConfigs.walletId, walletId),
-    });
+    const [config] = await db.select().from(privacyConfigs).where(eq(privacyConfigs.walletId, walletId));
 
     return config || {
       walletId,
