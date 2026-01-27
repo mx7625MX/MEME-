@@ -39,7 +39,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Plus,
   Play,
@@ -51,6 +53,12 @@ import {
   Activity,
   Zap,
   RefreshCw,
+  Users,
+  ArrowRight,
+  Package,
+  Wallet,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 
 interface Strategy {
@@ -85,6 +93,46 @@ export function MarketMakerManager() {
   const [isCreating, setIsCreating] = useState(false);
   const [isExecuting, setIsExecuting] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+
+  // 批量操作相关状态
+  const [activeBatchTab, setActiveBatchTab] = useState<'create-wallets' | 'batch-buy' | 'batch-collect' | 'batch-sell'>('create-wallets');
+  const [isBatchOperating, setIsBatchOperating] = useState(false);
+  const [selectedWallets, setSelectedWallets] = useState<Set<string>>(new Set());
+  const [batchResult, setBatchResult] = useState<any>(null);
+  const [showBatchResult, setShowBatchResult] = useState(false);
+
+  // 批量创建钱包表单
+  const [batchCreateForm, setBatchCreateForm] = useState({
+    count: 10,
+    chain: 'solana',
+    prefix: 'MM'
+  });
+
+  // 批量买入表单
+  const [batchBuyForm, setBatchBuyForm] = useState({
+    tokenSymbol: '',
+    tokenAddress: '',
+    buyAmountPerWallet: '100',
+    price: '0.000001',
+    chain: 'solana'
+  });
+
+  // 批量归集表单
+  const [batchCollectForm, setBatchCollectForm] = useState({
+    targetWalletId: '',
+    tokenSymbol: '',
+    tokenAddress: '',
+    chain: 'solana'
+  });
+
+  // 批量卖出表单
+  const [batchSellForm, setBatchSellForm] = useState({
+    tokenSymbol: '',
+    tokenAddress: '',
+    sellPercentage: 100,
+    currentPrice: '0.000002',
+    chain: 'solana'
+  });
 
   const [strategyForm, setStrategyForm] = useState({
     name: '',
@@ -128,6 +176,171 @@ export function MarketMakerManager() {
       }
     } catch (error) {
       console.error('Error loading wallets:', error);
+    }
+  };
+
+  // 批量创建钱包
+  const handleBatchCreateWallets = async () => {
+    if (!batchCreateForm.count || batchCreateForm.count <= 0) {
+      alert('请输入有效的钱包数量');
+      return;
+    }
+
+    setIsBatchOperating(true);
+    setBatchResult(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/batch-create-wallets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(batchCreateForm),
+      });
+
+      const data = await res.json();
+      setBatchResult(data);
+      setShowBatchResult(true);
+
+      if (data.success) {
+        await loadWallets();
+      }
+    } catch (error) {
+      setBatchResult({ success: false, error: '批量创建失败' });
+      setShowBatchResult(true);
+    } finally {
+      setIsBatchOperating(false);
+    }
+  };
+
+  // 批量买入
+  const handleBatchBuy = async () => {
+    if (selectedWallets.size === 0) {
+      alert('请至少选择一个钱包');
+      return;
+    }
+    if (!batchBuyForm.tokenAddress || !batchBuyForm.buyAmountPerWallet) {
+      alert('请填写必填字段');
+      return;
+    }
+
+    setIsBatchOperating(true);
+    setBatchResult(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/batch-buy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...batchBuyForm,
+          walletIds: Array.from(selectedWallets),
+        }),
+      });
+
+      const data = await res.json();
+      setBatchResult(data);
+      setShowBatchResult(true);
+    } catch (error) {
+      setBatchResult({ success: false, error: '批量买入失败' });
+      setShowBatchResult(true);
+    } finally {
+      setIsBatchOperating(false);
+    }
+  };
+
+  // 批量归集
+  const handleBatchCollect = async () => {
+    if (selectedWallets.size === 0) {
+      alert('请至少选择一个钱包');
+      return;
+    }
+    if (!batchCollectForm.targetWalletId || !batchCollectForm.tokenAddress) {
+      alert('请填写必填字段');
+      return;
+    }
+
+    setIsBatchOperating(true);
+    setBatchResult(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/batch-collect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...batchCollectForm,
+          walletIds: Array.from(selectedWallets),
+        }),
+      });
+
+      const data = await res.json();
+      setBatchResult(data);
+      setShowBatchResult(true);
+
+      if (data.success) {
+        await loadWallets();
+      }
+    } catch (error) {
+      setBatchResult({ success: false, error: '批量归集失败' });
+      setShowBatchResult(true);
+    } finally {
+      setIsBatchOperating(false);
+    }
+  };
+
+  // 批量卖出
+  const handleBatchSell = async () => {
+    if (selectedWallets.size === 0) {
+      alert('请至少选择一个钱包');
+      return;
+    }
+    if (!batchSellForm.tokenAddress) {
+      alert('请填写必填字段');
+      return;
+    }
+
+    setIsBatchOperating(true);
+    setBatchResult(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/batch-sell`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...batchSellForm,
+          walletIds: Array.from(selectedWallets),
+        }),
+      });
+
+      const data = await res.json();
+      setBatchResult(data);
+      setShowBatchResult(true);
+
+      if (data.success) {
+        await loadWallets();
+      }
+    } catch (error) {
+      setBatchResult({ success: false, error: '批量卖出失败' });
+      setShowBatchResult(true);
+    } finally {
+      setIsBatchOperating(false);
+    }
+  };
+
+  // 切换钱包选择
+  const toggleWalletSelection = (walletId: string) => {
+    const newSelected = new Set(selectedWallets);
+    if (newSelected.has(walletId)) {
+      newSelected.delete(walletId);
+    } else {
+      newSelected.add(walletId);
+    }
+    setSelectedWallets(newSelected);
+  };
+
+  // 全选/取消全选
+  const toggleSelectAll = () => {
+    if (selectedWallets.size === wallets.length) {
+      setSelectedWallets(new Set());
+    } else {
+      setSelectedWallets(new Set(wallets.map(w => w.id)));
     }
   };
 
@@ -395,65 +608,87 @@ export function MarketMakerManager() {
         </Card>
       </div>
 
-      {/* 策略列表 */}
-      <Card className="bg-black/20 border-white/10">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-white">策略列表</CardTitle>
-              <CardDescription className="text-gray-400">
-                管理您的做市值策略
-              </CardDescription>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                loadStrategies();
-                loadWallets();
-              }}
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              刷新
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-purple-400" />
-            </div>
-          ) : strategies.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-400 mb-4">暂无策略</p>
-              <Button
-                onClick={() => setShowCreateDialog(true)}
-                variant="outline"
-              >
-                创建第一个策略
-              </Button>
-            </div>
-          ) : (
-            <div className="grid gap-4">
-              {strategies.map((strategy) => {
-                const info = getStrategyTypeInfo(strategy.strategyType);
-                return (
-                  <Card
-                    key={strategy.id}
-                    className={`bg-black/30 border ${
-                      strategy.isEnabled ? 'border-purple-500/30' : 'border-white/10'
-                    }`}
+      {/* 策略和批量操作 Tabs */}
+      <Tabs defaultValue="strategies" className="w-full">
+        <TabsList className="grid w-full grid-cols-5 bg-black/30 border border-white/10">
+          <TabsTrigger value="strategies" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
+            策略管理
+          </TabsTrigger>
+          <TabsTrigger value="create-wallets" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
+            批量创建钱包
+          </TabsTrigger>
+          <TabsTrigger value="batch-buy" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
+            批量买入
+          </TabsTrigger>
+          <TabsTrigger value="batch-collect" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
+            批量归集
+          </TabsTrigger>
+          <TabsTrigger value="batch-sell" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
+            批量卖出
+          </TabsTrigger>
+        </TabsList>
+
+        {/* 策略管理 */}
+        <TabsContent value="strategies" className="mt-4">
+          {/* 策略列表 */}
+          <Card className="bg-black/20 border-white/10">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-white">策略列表</CardTitle>
+                  <CardDescription className="text-gray-400">
+                    管理您的做市值策略
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    loadStrategies();
+                    loadWallets();
+                  }}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  刷新
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-purple-400" />
+                </div>
+              ) : strategies.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-400 mb-4">暂无策略</p>
+                  <Button
+                    onClick={() => setShowCreateDialog(true)}
+                    variant="outline"
                   >
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className={`p-2 rounded-lg ${info.color}`}>
-                              {info.icon}
-                            </div>
-                            <div>
-                              <h3 className="text-lg font-semibold text-white">
-                                {strategy.name}
+                    创建第一个策略
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {strategies.map((strategy) => {
+                    const info = getStrategyTypeInfo(strategy.strategyType);
+                    return (
+                      <Card
+                        key={strategy.id}
+                        className={`bg-black/30 border ${
+                          strategy.isEnabled ? 'border-purple-500/30' : 'border-white/10'
+                        }`}
+                      >
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-3">
+                                <div className={`p-2 rounded-lg ${info.color}`}>
+                                  {info.icon}
+                                </div>
+                                <div>
+                                  <h3 className="text-lg font-semibold text-white">
+                                    {strategy.name}
                               </h3>
                               <p className="text-sm text-gray-400">{info.desc}</p>
                             </div>
@@ -547,6 +782,613 @@ export function MarketMakerManager() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        {/* 批量创建钱包 */}
+        <TabsContent value="create-wallets" className="mt-4">
+          <Card className="bg-black/20 border-white/10">
+            <CardHeader>
+              <div>
+                <CardTitle className="text-white">批量创建钱包</CardTitle>
+                <CardDescription className="text-gray-400">
+                  快速创建多个做市值钱包
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>创建数量 *</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={batchCreateForm.count}
+                      onChange={(e) => setBatchCreateForm({ ...batchCreateForm, count: parseInt(e.target.value) || 1 })}
+                      className="bg-black/50 border-white/10"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>链 *</Label>
+                    <Select
+                      value={batchCreateForm.chain}
+                      onValueChange={(value) => setBatchCreateForm({ ...batchCreateForm, chain: value })}
+                    >
+                      <SelectTrigger className="bg-black/50 border-white/10">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="solana">Solana</SelectItem>
+                        <SelectItem value="ethereum">Ethereum</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>钱包前缀</Label>
+                  <Input
+                    placeholder="MM"
+                    value={batchCreateForm.prefix}
+                    onChange={(e) => setBatchCreateForm({ ...batchCreateForm, prefix: e.target.value })}
+                    className="bg-black/50 border-white/10"
+                  />
+                </div>
+                <Button
+                  onClick={handleBatchCreateWallets}
+                  disabled={isBatchOperating}
+                  className="w-full bg-purple-600 hover:bg-purple-700"
+                >
+                  {isBatchOperating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      创建中...
+                    </>
+                  ) : (
+                    <>
+                      <Wallet className="mr-2 h-4 w-4" />
+                      批量创建钱包
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {batchResult && showBatchResult && (
+                <div className={`p-4 rounded-lg border ${batchResult.success ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                  <div className="flex items-start gap-2">
+                    {batchResult.success ? (
+                      <CheckCircle2 className="w-5 h-5 text-green-400 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 text-red-400 mt-0.5" />
+                    )}
+                    <div>
+                      <p className={`font-medium ${batchResult.success ? 'text-green-400' : 'text-red-400'}`}>
+                        {batchResult.success ? '创建成功' : '创建失败'}
+                      </p>
+                      {batchResult.data && (
+                        <div className="mt-2 space-y-1">
+                          <p className="text-sm text-gray-300">
+                            成功创建: {batchResult.data.successCount} 个钱包
+                          </p>
+                          <p className="text-sm text-gray-300">
+                            失败: {batchResult.data.failedCount} 个钱包
+                          </p>
+                          {batchResult.data.wallets && batchResult.data.wallets.length > 0 && (
+                            <details className="mt-2">
+                              <summary className="text-sm text-gray-400 cursor-pointer hover:text-gray-300">
+                                查看创建的钱包列表
+                              </summary>
+                              <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                                {batchResult.data.wallets.map((wallet: any, idx: number) => (
+                                  <div key={idx} className="text-xs text-gray-300 flex justify-between">
+                                    <span>{wallet.name}: {wallet.address}</span>
+                                    <Badge variant="outline" className="text-xs">{wallet.chain}</Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            </details>
+                          )}
+                        </div>
+                      )}
+                      {batchResult.error && (
+                        <p className="text-sm text-red-300 mt-1">{batchResult.error}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* 批量买入 */}
+        <TabsContent value="batch-buy" className="mt-4">
+          <Card className="bg-black/20 border-white/10">
+            <CardHeader>
+              <div>
+                <CardTitle className="text-white">批量买入</CardTitle>
+                <CardDescription className="text-gray-400">
+                  使用多个钱包同时买入指定代币
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* 钱包选择 */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>选择钱包 *</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleSelectAll}
+                  >
+                    {selectedWallets.size === wallets.length ? '取消全选' : '全选'}
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-2 bg-black/30 rounded-lg">
+                  {wallets.map((wallet) => (
+                    <div
+                      key={wallet.id}
+                      onClick={() => toggleWalletSelection(wallet.id)}
+                      className={`p-2 rounded cursor-pointer border transition-all ${
+                        selectedWallets.has(wallet.id)
+                          ? 'bg-purple-600/20 border-purple-500'
+                          : 'bg-black/50 border-white/10 hover:border-white/30'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={selectedWallets.has(wallet.id)}
+                          disabled
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white truncate">{wallet.name}</p>
+                          <p className="text-xs text-gray-400 truncate">{wallet.address.slice(0, 8)}...</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-sm text-gray-400">已选择 {selectedWallets.size} 个钱包</p>
+              </div>
+
+              {/* 买入参数 */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>代币符号 *</Label>
+                    <Input
+                      placeholder="PEPE"
+                      value={batchBuyForm.tokenSymbol}
+                      onChange={(e) => setBatchBuyForm({ ...batchBuyForm, tokenSymbol: e.target.value })}
+                      className="bg-black/50 border-white/10"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>代币地址 *</Label>
+                    <Input
+                      placeholder="0x..."
+                      value={batchBuyForm.tokenAddress}
+                      onChange={(e) => setBatchBuyForm({ ...batchBuyForm, tokenAddress: e.target.value })}
+                      className="bg-black/50 border-white/10"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>每钱包买入金额 *</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="100"
+                      value={batchBuyForm.buyAmountPerWallet}
+                      onChange={(e) => setBatchBuyForm({ ...batchBuyForm, buyAmountPerWallet: e.target.value })}
+                      className="bg-black/50 border-white/10"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>代币价格 *</Label>
+                    <Input
+                      type="number"
+                      step="0.000001"
+                      placeholder="0.000001"
+                      value={batchBuyForm.price}
+                      onChange={(e) => setBatchBuyForm({ ...batchBuyForm, price: e.target.value })}
+                      className="bg-black/50 border-white/10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>链 *</Label>
+                  <Select
+                    value={batchBuyForm.chain}
+                    onValueChange={(value) => setBatchBuyForm({ ...batchBuyForm, chain: value })}
+                  >
+                    <SelectTrigger className="bg-black/50 border-white/10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="solana">Solana</SelectItem>
+                      <SelectItem value="ethereum">Ethereum</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  onClick={handleBatchBuy}
+                  disabled={isBatchOperating || selectedWallets.size === 0}
+                  className="w-full bg-purple-600 hover:bg-purple-700"
+                >
+                  {isBatchOperating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      买入中...
+                    </>
+                  ) : (
+                    <>
+                      <Package className="mr-2 h-4 w-4" />
+                      批量买入 ({selectedWallets.size} 个钱包)
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {batchResult && showBatchResult && (
+                <div className={`p-4 rounded-lg border ${batchResult.success ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                  <div className="flex items-start gap-2">
+                    {batchResult.success ? (
+                      <CheckCircle2 className="w-5 h-5 text-green-400 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 text-red-400 mt-0.5" />
+                    )}
+                    <div>
+                      <p className={`font-medium ${batchResult.success ? 'text-green-400' : 'text-red-400'}`}>
+                        {batchResult.success ? '批量买入成功' : '批量买入失败'}
+                      </p>
+                      {batchResult.data && (
+                        <div className="mt-2 space-y-1">
+                          <p className="text-sm text-gray-300">
+                            成功: {batchResult.data.successCount} 笔
+                          </p>
+                          <p className="text-sm text-gray-300">
+                            失败: {batchResult.data.failedCount} 笔
+                          </p>
+                        </div>
+                      )}
+                      {batchResult.error && (
+                        <p className="text-sm text-red-300 mt-1">{batchResult.error}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* 批量归集 */}
+        <TabsContent value="batch-collect" className="mt-4">
+          <Card className="bg-black/20 border-white/10">
+            <CardHeader>
+              <div>
+                <CardTitle className="text-white">批量归集</CardTitle>
+                <CardDescription className="text-gray-400">
+                  将多个钱包的代币归集到一个目标钱包
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* 目标钱包 */}
+              <div className="space-y-2">
+                <Label>目标钱包 *</Label>
+                <Select
+                  value={batchCollectForm.targetWalletId}
+                  onValueChange={(value) => setBatchCollectForm({ ...batchCollectForm, targetWalletId: value })}
+                >
+                  <SelectTrigger className="bg-black/50 border-white/10">
+                    <SelectValue placeholder="选择目标钱包" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {wallets.map((wallet) => (
+                      <SelectItem key={wallet.id} value={wallet.id}>
+                        {wallet.name} - {wallet.address.slice(0, 8)}...
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* 源钱包选择 */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>选择源钱包 *</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleSelectAll}
+                  >
+                    {selectedWallets.size === wallets.length ? '取消全选' : '全选'}
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-2 bg-black/30 rounded-lg">
+                  {wallets.map((wallet) => (
+                    <div
+                      key={wallet.id}
+                      onClick={() => toggleWalletSelection(wallet.id)}
+                      className={`p-2 rounded cursor-pointer border transition-all ${
+                        selectedWallets.has(wallet.id)
+                          ? 'bg-purple-600/20 border-purple-500'
+                          : 'bg-black/50 border-white/10 hover:border-white/30'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={selectedWallets.has(wallet.id)}
+                          disabled
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white truncate">{wallet.name}</p>
+                          <p className="text-xs text-gray-400 truncate">{wallet.address.slice(0, 8)}...</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-sm text-gray-400">已选择 {selectedWallets.size} 个源钱包</p>
+              </div>
+
+              {/* 归集参数 */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>代币符号 *</Label>
+                    <Input
+                      placeholder="PEPE"
+                      value={batchCollectForm.tokenSymbol}
+                      onChange={(e) => setBatchCollectForm({ ...batchCollectForm, tokenSymbol: e.target.value })}
+                      className="bg-black/50 border-white/10"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>代币地址 *</Label>
+                    <Input
+                      placeholder="0x..."
+                      value={batchCollectForm.tokenAddress}
+                      onChange={(e) => setBatchCollectForm({ ...batchCollectForm, tokenAddress: e.target.value })}
+                      className="bg-black/50 border-white/10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>链 *</Label>
+                  <Select
+                    value={batchCollectForm.chain}
+                    onValueChange={(value) => setBatchCollectForm({ ...batchCollectForm, chain: value })}
+                  >
+                    <SelectTrigger className="bg-black/50 border-white/10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="solana">Solana</SelectItem>
+                      <SelectItem value="ethereum">Ethereum</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  onClick={handleBatchCollect}
+                  disabled={isBatchOperating || selectedWallets.size === 0 || !batchCollectForm.targetWalletId}
+                  className="w-full bg-purple-600 hover:bg-purple-700"
+                >
+                  {isBatchOperating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      归集中...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowRight className="mr-2 h-4 w-4" />
+                      批量归集 ({selectedWallets.size} 个钱包)
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {batchResult && showBatchResult && (
+                <div className={`p-4 rounded-lg border ${batchResult.success ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                  <div className="flex items-start gap-2">
+                    {batchResult.success ? (
+                      <CheckCircle2 className="w-5 h-5 text-green-400 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 text-red-400 mt-0.5" />
+                    )}
+                    <div>
+                      <p className={`font-medium ${batchResult.success ? 'text-green-400' : 'text-red-400'}`}>
+                        {batchResult.success ? '批量归集成功' : '批量归集失败'}
+                      </p>
+                      {batchResult.data && (
+                        <div className="mt-2 space-y-1">
+                          <p className="text-sm text-gray-300">
+                            成功: {batchResult.data.successCount} 笔
+                          </p>
+                          <p className="text-sm text-gray-300">
+                            失败: {batchResult.data.failedCount} 笔
+                          </p>
+                        </div>
+                      )}
+                      {batchResult.error && (
+                        <p className="text-sm text-red-300 mt-1">{batchResult.error}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* 批量卖出 */}
+        <TabsContent value="batch-sell" className="mt-4">
+          <Card className="bg-black/20 border-white/10">
+            <CardHeader>
+              <div>
+                <CardTitle className="text-white">批量卖出</CardTitle>
+                <CardDescription className="text-gray-400">
+                  使用多个钱包同时卖出指定代币
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* 钱包选择 */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>选择钱包 *</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleSelectAll}
+                  >
+                    {selectedWallets.size === wallets.length ? '取消全选' : '全选'}
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-2 bg-black/30 rounded-lg">
+                  {wallets.map((wallet) => (
+                    <div
+                      key={wallet.id}
+                      onClick={() => toggleWalletSelection(wallet.id)}
+                      className={`p-2 rounded cursor-pointer border transition-all ${
+                        selectedWallets.has(wallet.id)
+                          ? 'bg-purple-600/20 border-purple-500'
+                          : 'bg-black/50 border-white/10 hover:border-white/30'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={selectedWallets.has(wallet.id)}
+                          disabled
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white truncate">{wallet.name}</p>
+                          <p className="text-xs text-gray-400 truncate">{wallet.address.slice(0, 8)}...</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-sm text-gray-400">已选择 {selectedWallets.size} 个钱包</p>
+              </div>
+
+              {/* 卖出参数 */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>代币符号 *</Label>
+                    <Input
+                      placeholder="PEPE"
+                      value={batchSellForm.tokenSymbol}
+                      onChange={(e) => setBatchSellForm({ ...batchSellForm, tokenSymbol: e.target.value })}
+                      className="bg-black/50 border-white/10"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>代币地址 *</Label>
+                    <Input
+                      placeholder="0x..."
+                      value={batchSellForm.tokenAddress}
+                      onChange={(e) => setBatchSellForm({ ...batchSellForm, tokenAddress: e.target.value })}
+                      className="bg-black/50 border-white/10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>卖出比例: {batchSellForm.sellPercentage}%</Label>
+                  <Slider
+                    value={[batchSellForm.sellPercentage]}
+                    onValueChange={(value) => setBatchSellForm({ ...batchSellForm, sellPercentage: value[0] })}
+                    max={100}
+                    min={1}
+                    step={1}
+                    className="py-4"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>当前价格 *</Label>
+                    <Input
+                      type="number"
+                      step="0.000001"
+                      placeholder="0.000002"
+                      value={batchSellForm.currentPrice}
+                      onChange={(e) => setBatchSellForm({ ...batchSellForm, currentPrice: e.target.value })}
+                      className="bg-black/50 border-white/10"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>链 *</Label>
+                    <Select
+                      value={batchSellForm.chain}
+                      onValueChange={(value) => setBatchSellForm({ ...batchSellForm, chain: value })}
+                    >
+                      <SelectTrigger className="bg-black/50 border-white/10">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="solana">Solana</SelectItem>
+                        <SelectItem value="ethereum">Ethereum</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Button
+                  onClick={handleBatchSell}
+                  disabled={isBatchOperating || selectedWallets.size === 0}
+                  className="w-full bg-red-600 hover:bg-red-700"
+                >
+                  {isBatchOperating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      卖出中...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="mr-2 h-4 w-4" />
+                      批量卖出 ({selectedWallets.size} 个钱包)
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {batchResult && showBatchResult && (
+                <div className={`p-4 rounded-lg border ${batchResult.success ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                  <div className="flex items-start gap-2">
+                    {batchResult.success ? (
+                      <CheckCircle2 className="w-5 h-5 text-green-400 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 text-red-400 mt-0.5" />
+                    )}
+                    <div>
+                      <p className={`font-medium ${batchResult.success ? 'text-green-400' : 'text-red-400'}`}>
+                        {batchResult.success ? '批量卖出成功' : '批量卖出失败'}
+                      </p>
+                      {batchResult.data && (
+                        <div className="mt-2 space-y-1">
+                          <p className="text-sm text-gray-300">
+                            成功: {batchResult.data.successCount} 笔
+                          </p>
+                          <p className="text-sm text-gray-300">
+                            失败: {batchResult.data.failedCount} 笔
+                          </p>
+                        </div>
+                      )}
+                      {batchResult.error && (
+                        <p className="text-sm text-red-300 mt-1">{batchResult.error}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* 创建策略对话框 */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
