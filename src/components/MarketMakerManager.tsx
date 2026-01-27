@@ -644,7 +644,7 @@ export function MarketMakerManager() {
 
       {/* 策略和批量操作 Tabs */}
       <Tabs defaultValue="strategies" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 bg-black/30 border border-white/10">
+        <TabsList className="grid w-full grid-cols-6 bg-black/30 border border-white/10">
           <TabsTrigger value="strategies" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
             策略管理
           </TabsTrigger>
