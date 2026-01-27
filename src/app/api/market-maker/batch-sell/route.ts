@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     }
     
     const results = {
-      success: [] as Array<{ walletId: string; soldAmount: number; received: number }>,
+      success: [] as Array<{ walletId: string; walletName: string; soldAmount: number; receivedAmount: number }>,
       failed: [] as Array<{ walletId: string; reason: string }>,
       totalSoldAmount: 0,
       totalReceived: 0
