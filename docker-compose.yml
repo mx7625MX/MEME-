@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 数据库
+  postgres:
+    image: postgres:16-alpine
+    container_name: meme-master-postgres
+    environment:
+      POSTGRES_USER: memeuser
+      POSTGRES_PASSWORD: memepassword123
+      POSTGRES_DB: mememaster
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - meme-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U memeuser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Next.js 应用
+  app:
+    build: .
+    container_name: meme-master-app
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - DATABASE_URL=postgresql://memeuser:memepassword123@postgres:5432/mememaster
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - meme-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  meme-network:
+    driver: bridge
