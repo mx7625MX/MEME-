@@ -1,0 +1,10 @@
+{
+  "name": "meme-master-pro",
+  "services": {
+    "web": {
+      "buildCommand": "pnpm install && pnpm run build",
+      "startCommand": "pnpm run start",
+      "env": "node"
+    }
+  }
+}
