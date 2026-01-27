@@ -95,7 +95,7 @@ export function MarketMakerManager() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   // 批量操作相关状态
-  const [activeBatchTab, setActiveBatchTab] = useState<'create-wallets' | 'batch-buy' | 'batch-collect' | 'batch-sell'>('create-wallets');
+  const [activeBatchTab, setActiveBatchTab] = useState<'create-wallets' | 'batch-buy' | 'batch-collect' | 'batch-sell' | 'batch-delete-wallets'>('create-wallets');
   const [isBatchOperating, setIsBatchOperating] = useState(false);
   const [selectedWallets, setSelectedWallets] = useState<Set<string>>(new Set());
   const [batchResult, setBatchResult] = useState<any>(null);
@@ -219,6 +219,46 @@ export function MarketMakerManager() {
       }
     } catch (error) {
       setBatchResult({ success: false, error: '批量创建失败' });
+      setShowBatchResult(true);
+    } finally {
+      setIsBatchOperating(false);
+    }
+  };
+
+  // 批量删除钱包
+  const handleBatchDeleteWallets = async () => {
+    if (selectedWallets.size === 0) {
+      alert('请至少选择一个钱包');
+      return;
+    }
+
+    const confirmed = window.confirm(`确定要删除选中的 ${selectedWallets.size} 个钱包吗？此操作不可恢复！`);
+    if (!confirmed) {
+      return;
+    }
+
+    setIsBatchOperating(true);
+    setBatchResult(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/batch-delete-wallets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          walletIds: Array.from(selectedWallets),
+        }),
+      });
+
+      const data = await res.json();
+      setBatchResult(data);
+      setShowBatchResult(true);
+
+      if (data.success) {
+        await loadWallets();
+        setSelectedWallets(new Set()); // 清空选择
+      }
+    } catch (error) {
+      setBatchResult({ success: false, error: '批量删除失败' });
       setShowBatchResult(true);
     } finally {
       setIsBatchOperating(false);
@@ -619,6 +659,9 @@ export function MarketMakerManager() {
           </TabsTrigger>
           <TabsTrigger value="batch-sell" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
             批量卖出
+          </TabsTrigger>
+          <TabsTrigger value="batch-delete-wallets" className="data-[state=active]:bg-red-600 data-[state=active]:text-white">
+            批量删除钱包
           </TabsTrigger>
         </TabsList>
 
@@ -1385,6 +1428,122 @@ export function MarketMakerManager() {
                           </p>
                           <p className="text-sm text-gray-300">
                             失败: {batchResult.data.failedCount} 笔
+                          </p>
+                        </div>
+                      )}
+                      {batchResult.error && (
+                        <p className="text-sm text-red-300 mt-1">{batchResult.error}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* 批量删除钱包 */}
+        <TabsContent value="batch-delete-wallets" className="mt-4">
+          <Card className="bg-black/20 border-white/10">
+            <CardHeader>
+              <div>
+                <CardTitle className="text-white">批量删除钱包</CardTitle>
+                <CardDescription className="text-gray-400">
+                  删除多个不再使用的钱包（此操作不可恢复）
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* 警告提示 */}
+              <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-5 h-5 text-red-400 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-red-400">危险操作</p>
+                    <p className="text-sm text-gray-300 mt-1">
+                      删除钱包将永久删除该钱包的所有信息，包括钱包地址、余额等。此操作不可恢复，请谨慎操作。
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 钱包选择 */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>选择要删除的钱包 *</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleSelectAll}
+                  >
+                    {selectedWallets.size === wallets.length ? '取消全选' : '全选'}
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto p-2 bg-black/30 rounded-lg">
+                  {wallets.map((wallet) => (
+                    <div
+                      key={wallet.id}
+                      onClick={() => toggleWalletSelection(wallet.id)}
+                      className={`p-2 rounded cursor-pointer border transition-all ${
+                        selectedWallets.has(wallet.id)
+                          ? 'bg-red-600/20 border-red-500'
+                          : 'bg-black/50 border-white/10 hover:border-white/30'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={selectedWallets.has(wallet.id)}
+                          disabled
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white truncate">{wallet.name}</p>
+                          <p className="text-xs text-gray-400 truncate">{wallet.address.slice(0, 8)}...</p>
+                          <p className="text-xs text-gray-500">余额: {wallet.balance}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-sm text-gray-400">
+                  已选择 <span className="text-red-400 font-medium">{selectedWallets.size}</span> 个钱包
+                </p>
+              </div>
+
+              {/* 删除按钮 */}
+              <Button
+                onClick={handleBatchDeleteWallets}
+                disabled={isBatchOperating || selectedWallets.size === 0}
+                className="w-full bg-red-600 hover:bg-red-700"
+              >
+                {isBatchOperating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    删除中...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    批量删除 ({selectedWallets.size} 个钱包)
+                  </>
+                )}
+              </Button>
+
+              {batchResult && showBatchResult && (
+                <div className={`p-4 rounded-lg border ${batchResult.success ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                  <div className="flex items-start gap-2">
+                    {batchResult.success ? (
+                      <CheckCircle2 className="w-5 h-5 text-green-400 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 text-red-400 mt-0.5" />
+                    )}
+                    <div>
+                      <p className={`font-medium ${batchResult.success ? 'text-green-400' : 'text-red-400'}`}>
+                        {batchResult.success ? '批量删除成功' : '批量删除失败'}
+                      </p>
+                      {batchResult.data && (
+                        <div className="mt-2 space-y-1">
+                          <p className="text-sm text-gray-300">
+                            已删除: {batchResult.data.count} 个钱包
                           </p>
                         </div>
                       )}
