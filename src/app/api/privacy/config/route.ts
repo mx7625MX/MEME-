@@ -68,9 +68,7 @@ export async function POST(request: NextRequest) {
 
     const db = await getDb();
     // 验证钱包是否存在
-    const wallet = await db.query.wallets.findFirst({
-      where: eq(wallets.id, walletId),
-    });
+    const [wallet] = await db.select().from(wallets).where(eq(wallets.id, walletId));
 
     if (!wallet) {
       return NextResponse.json(
@@ -80,9 +78,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查配置是否已存在
-    const existingConfig = await db.query.privacyConfigs.findFirst({
-      where: eq(privacyConfigs.walletId, walletId),
-    });
+    const [existingConfig] = await db.select().from(privacyConfigs).where(eq(privacyConfigs.walletId, walletId));
 
     const configData = {
       walletId,
