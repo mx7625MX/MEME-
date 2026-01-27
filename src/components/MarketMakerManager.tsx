@@ -508,18 +508,6 @@ export function MarketMakerManager() {
         color: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20',
         desc: '跟随大额买入快速买入'
       },
-      price_stabilization: {
-        name: '价格稳定',
-        icon: <Activity className="w-4 h-4" />,
-        color: 'text-green-500 bg-green-500/10 border-green-500/20',
-        desc: '定期买入稳定价格'
-      },
-      anti_dump: {
-        name: '防砸盘',
-        icon: <Shield className="w-4 h-4" />,
-        color: 'text-red-500 bg-red-500/10 border-red-500/20',
-        desc: '大额卖出时反向买入'
-      },
     };
     return types[type] || { name: type, icon: null, color: '', desc: '' };
   };
@@ -534,14 +522,6 @@ export function MarketMakerManager() {
       bot_snipe: {
         param1: '买入数量',
         param2: '触发阈值 (SOL)',
-      },
-      price_stabilization: {
-        param1: '每次买入数量',
-        param2: '目标增长率 (%)',
-      },
-      anti_dump: {
-        param1: '反制买入数量',
-        param2: '卖出阈值 (代币)',
       },
     };
     return labels[type] || { param1: '参数1', param2: '参数2' };
@@ -1487,7 +1467,7 @@ export function MarketMakerManager() {
             <div className="space-y-3">
               <Label>策略类型 *</Label>
               <div className="grid grid-cols-2 gap-3">
-                {(['price_floor', 'bot_snipe', 'price_stabilization', 'anti_dump'] as const).map((type) => {
+                {(['price_floor', 'bot_snipe'] as const).map((type) => {
                   const info = getStrategyTypeInfo(type);
                   return (
                     <button
