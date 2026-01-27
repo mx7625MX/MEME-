@@ -1,111 +1,153 @@
-# 快速开始部署
+# 🚀 单人用户快速开始指南
 
-## 最简单的部署方式（Docker）
+## 📋 最简部署流程（3 步）
 
-### 1. 安装 Docker
-
-**Ubuntu:**
-```bash
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
-```
-
-**macOS:**
-```bash
-brew install --cask docker
-```
-
-### 2. 克隆项目
+### 步骤 1：准备工作（5 分钟）
 
 ```bash
-git clone <your-repo-url>
-cd meme-master-pro
+# 1. 注册账号（免费）
+- Vercel: https://vercel.com
+- GitHub: https://github.com
+- Supabase: https://supabase.com
+
+# 2. 获取密钥
+- Supabase DATABASE_URL（在 Supabase Dashboard > Project Settings > API）
+- 你的钱包私钥（0x...，仅用于服务端签名）
 ```
 
-### 3. 一键部署
+### 步骤 2：部署（15 分钟）
 
 ```bash
-# 编辑 .env 文件配置数据库密码
-nano .env
+# 1. 运行快速部署脚本
+./quick-deploy.sh
 
-# 运行部署脚本
-chmod +x deploy.sh
-./deploy.sh
+# 2. 按照提示操作：
+   - 输入 GitHub 用户名和仓库名
+   - 输入环境变量
+   - 等待部署完成
+
+# 3. 访问你的应用
+https://meme-master-pro.vercel.app
 ```
 
-### 4. 访问应用
+### 步骤 3：初始化数据库（10 分钟）
 
-打开浏览器访问: `http://localhost:5000`
+```bash
+# 访问 Supabase Dashboard: https://app.supabase.com
+# 创建新项目，然后执行以下 SQL：
+
+-- 复制并粘贴完整的 SQL 脚本
+-- （见 PERSONAL_DEPLOYMENT_GUIDE.md 的"数据库初始化"部分）
+```
 
 ---
 
-## 不使用 Docker 的部署方式
+## ✅ 完成后的清单
 
-### 1. 安装 Node.js 和 pnpm
-
-```bash
-curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
-sudo apt install -y nodejs
-npm install -g pnpm@9.0.0
-```
-
-### 2. 安装 PostgreSQL
-
-```bash
-sudo apt install -y postgresql postgresql-contrib
-sudo systemctl start postgresql
-```
-
-### 3. 创建数据库
-
-```bash
-sudo -u postgres psql
-CREATE USER memeuser WITH PASSWORD 'your_password';
-CREATE DATABASE mememaster OWNER memeuser;
-\q
-```
-
-### 4. 配置项目
-
-```bash
-cp .env.example .env
-nano .env
-```
-
-修改 `DATABASE_URL` 为：
-```
-postgresql://memeuser:your_password@localhost:5432/mememaster
-```
-
-### 5. 安装依赖并构建
-
-```bash
-pnpm install
-pnpm run build
-```
-
-### 6. 启动应用
-
-```bash
-pnpm run start
-```
-
-访问: `http://localhost:5000`
+- [ ] 应用可以访问（Vercel URL）
+- [ ] 环境变量已配置
+- [ ] 数据库表已创建
+- [ ] 钱包已添加
+- [ ] 测试交易成功
 
 ---
 
-## 部署到云平台
+## 🎯 启用真实交易
 
-### Vercel
+### 1. 配置 Jito（可选）
 
-1. 连接 GitHub 仓库
-2. 配置环境变量
-3. 自动部署
+```
+1. 访问应用 > 设置
+2. 输入 Jito Shred Key
+3. 保存
+```
 
-### Railway
+### 2. 修改代码
 
-1. 连接 GitHub 仓库
-2. 添加 PostgreSQL
-3. 部署
+编辑 `src/app/api/portfolios/monitor/route.ts`，将模拟代码替换为真实调用。
 
-详细说明请参考 [DEPLOYMENT.md](./DEPLOYMENT.md)
+### 3. 测试
+
+- 创建测试钱包
+- 充入少量 SOL（0.01）
+- 执行小额交易
+- 在 Solana Explorer 验证
+
+---
+
+## 📝 更新应用
+
+```bash
+# 修改代码后，只需：
+git add .
+git commit -m "描述你的修改"
+git push origin main
+
+# Vercel 自动部署，1-2 分钟完成
+```
+
+---
+
+## 🔍 查看日志
+
+```bash
+# Vercel Dashboard
+https://vercel.com/dashboard
+
+# 或使用 CLI
+vercel logs
+```
+
+---
+
+## 💰 费用
+
+| 服务 | 费用 |
+|------|------|
+| Vercel | 免费（个人使用） |
+| Supabase | 免费（个人使用） |
+| Solana 交易 | 约 $0.001/笔 |
+
+**总费用：$0/月（除了实际交易费）**
+
+---
+
+## 🆘 遇到问题？
+
+### 常见问题
+
+1. **部署失败**
+   ```bash
+   # 检查配置
+   ./check-config.sh
+
+   # 查看日志
+   vercel logs
+   ```
+
+2. **数据库连接失败**
+   - 检查 DATABASE_URL 格式
+   - 确认 Supabase 项目正在运行
+
+3. **交易失败**
+   - 检查钱包余额
+   - 验证 RPC URL
+   - 查看 Solana Explorer
+
+### 获取帮助
+
+- 查看 [PERSONAL_DEPLOYMENT_GUIDE.md](./PERSONAL_DEPLOYMENT_GUIDE.md) 了解详细信息
+- 查看 [JITO_INTEGRATION_STATUS.md](./JITO_INTEGRATION_STATUS.md) 了解 Jito 集成
+
+---
+
+## 🎉 开始使用
+
+**准备好了吗？**
+
+```bash
+# 立即开始部署
+./quick-deploy.sh
+```
+
+**30 分钟后，你就可以使用真实交易了！** 🚀
