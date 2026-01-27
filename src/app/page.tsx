@@ -32,7 +32,8 @@ import {
   Copy,
   Trash2,
   Plus,
-  Eye
+  Eye,
+  ArrowRight
 } from 'lucide-react';
 
 import { INFLUENCERS, Influencer, INFLUENCERS_BY_CATEGORY, searchInfluencers } from '@/config/influencers';
@@ -184,12 +185,21 @@ export default function MemeMasterPro() {
   // 转账相关状态
   const [transferForm, setTransferForm] = useState({
     walletId: '',
+    chain: 'solana',
     toAddress: '',
     tokenSymbol: '',
     amount: '',
     isNative: true
   });
   const [isTransferring, setIsTransferring] = useState(false);
+
+  // 批量转账相关状态
+  const [batchTransferMode, setBatchTransferMode] = useState(false);
+  const [batchTransfers, setBatchTransfers] = useState<Array<{
+    toAddress: string;
+    amount: string;
+  }>>([]);
+  const [isBatchTransferring, setIsBatchTransferring] = useState(false);
   
   // 交易历史
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -1145,6 +1155,7 @@ export default function MemeMasterPro() {
         alert(data.data.message);
         setTransferForm({
           walletId: '',
+          chain: 'solana',
           toAddress: '',
           tokenSymbol: '',
           amount: '',
@@ -1160,6 +1171,75 @@ export default function MemeMasterPro() {
       alert('转账失败');
     } finally {
       setIsTransferring(false);
+    }
+  };
+
+  // 批量转账
+  const handleBatchTransfer = async () => {
+    if (!transferForm.walletId) {
+      alert('请选择钱包');
+      return;
+    }
+    
+    if (batchTransfers.length === 0) {
+      alert('请添加至少一笔转账');
+      return;
+    }
+    
+    // 验证每笔转账
+    for (let i = 0; i < batchTransfers.length; i++) {
+      const transfer = batchTransfers[i];
+      if (!transfer.toAddress || !transfer.amount) {
+        alert(`第 ${i + 1} 笔转账缺少必填字段`);
+        return;
+      }
+    }
+    
+    try {
+      setIsBatchTransferring(true);
+      let successCount = 0;
+      let failCount = 0;
+      
+      for (let i = 0; i < batchTransfers.length; i++) {
+        const transfer = batchTransfers[i];
+        try {
+          const res = await fetch(`${API_BASE}/tokens/transfer`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              walletId: transferForm.walletId,
+              chain: transferForm.chain,
+              toAddress: transfer.toAddress,
+              tokenSymbol: transferForm.tokenSymbol,
+              amount: transfer.amount,
+              isNative: transferForm.isNative
+            })
+          });
+          
+          const data = await res.json();
+          if (data.success) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (error) {
+          console.error(`Transfer ${i + 1} failed:`, error);
+          failCount++;
+        }
+        
+        // 添加小延迟避免过快请求
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      alert(`批量转账完成！\n成功: ${successCount} 笔\n失败: ${failCount} 笔`);
+      setBatchTransfers([]);
+      loadTransactions();
+      loadWallets();
+    } catch (error) {
+      console.error('Error batch transferring:', error);
+      alert('批量转账失败');
+    } finally {
+      setIsBatchTransferring(false);
     }
   };
   
@@ -3665,19 +3745,79 @@ export default function MemeMasterPro() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
-                  {/* 发行平台选择 */}
+                  {/* 区块链网络选择 */}
+                  <div>
+                    <Label className="text-gray-400">区块链网络</Label>
+                    <select
+                      className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2"
+                      value={launchForm.chain}
+                      onChange={(e) => {
+                        const chain = e.target.value;
+                        // 根据链自动选择合适的平台
+                        let platform = 'raydium';
+                        let addLiquidity = true;
+                        
+                        if (chain === 'solana') {
+                          platform = 'pump.fun';
+                          addLiquidity = false;
+                        } else if (chain === 'bsc') {
+                          platform = 'pancakeswap';
+                          addLiquidity = true;
+                        } else if (chain === 'eth') {
+                          platform = 'uniswap';
+                          addLiquidity = true;
+                        }
+                        
+                        setLaunchForm({
+                          ...launchForm,
+                          chain,
+                          platform,
+                          addLiquidity
+                        });
+                      }}
+                    >
+                      <option value="solana">Solana</option>
+                      <option value="bsc">BSC (BNB Chain)</option>
+                      <option value="eth">Ethereum</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {launchForm.chain === 'solana' ? (
+                        <>Solana 网络支持 pump.fun、four.meme 等 Bonding Curve 平台，以及 Raydium 等 AMM 平台</>
+                      ) : launchForm.chain === 'bsc' ? (
+                        <>BSC 网络支持 PancakeSwap 等 AMM 平台</>
+                      ) : (
+                        <>Ethereum 网络支持 Uniswap 等 AMM 平台</>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* 发行平台选择（根据链自动填充，可修改） */}
                   <div>
                     <Label className="text-gray-400">发行平台</Label>
                     <select
                       className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2"
                       value={launchForm.platform}
-                      onChange={(e) => setLaunchForm({...launchForm, platform: e.target.value, addLiquidity: e.target.value !== 'pump.fun' && e.target.value !== 'four.meme'})}
+                      onChange={(e) => setLaunchForm({
+                        ...launchForm,
+                        platform: e.target.value,
+                        addLiquidity: e.target.value !== 'pump.fun' && e.target.value !== 'four.meme'
+                      })}
                     >
-                      <option value="pump.fun">pump.fun (Bonding Curve)</option>
-                      <option value="four.meme">four.meme (Bonding Curve)</option>
-                      <option value="raydium">Raydium (AMM)</option>
-                      <option value="uniswap">Uniswap (AMM)</option>
-                      <option value="pancakeswap">PancakeSwap (AMM)</option>
+                      {launchForm.chain === 'solana' ? (
+                        <>
+                          <option value="pump.fun">pump.fun (Bonding Curve)</option>
+                          <option value="four.meme">four.meme (Bonding Curve)</option>
+                          <option value="raydium">Raydium (AMM)</option>
+                        </>
+                      ) : launchForm.chain === 'bsc' ? (
+                        <>
+                          <option value="pancakeswap">PancakeSwap (AMM)</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="uniswap">Uniswap (AMM)</option>
+                        </>
+                      )}
                     </select>
                     <p className="text-xs text-gray-500 mt-1">
                       {launchForm.platform === 'pump.fun' || launchForm.platform === 'four.meme' ? (
@@ -5434,102 +5574,267 @@ export default function MemeMasterPro() {
           <TabsContent value="transfer" className="space-y-4">
             <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="text-white">转账</CardTitle>
-                <CardDescription className="text-gray-400">
-                  向其他地址转账代币
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
-                  {/* 发行平台选择 */}
+                <div className="flex items-center justify-between">
                   <div>
-                    <Label className="text-gray-400">发行平台</Label>
-                    <select
-                      className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2"
-                      value={launchForm.platform}
-                      onChange={(e) => setLaunchForm({...launchForm, platform: e.target.value, addLiquidity: e.target.value !== 'pump.fun' && e.target.value !== 'four.meme'})}
-                    >
-                      <option value="pump.fun">pump.fun (Bonding Curve)</option>
-                      <option value="four.meme">four.meme (Bonding Curve)</option>
-                      <option value="raydium">Raydium (AMM)</option>
-                      <option value="uniswap">Uniswap (AMM)</option>
-                      <option value="pancakeswap">PancakeSwap (AMM)</option>
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {launchForm.platform === 'pump.fun' || launchForm.platform === 'four.meme' ? (
-                        <>
-                          使用 Bonding Curve 机制，无需添加流动性。达到一定金额后可上线到 DEX。
-                        </>
-                      ) : (
-                        <>
-                          使用 AMM 机制，需要添加流动性池。
-                        </>
-                      )}
-                    </p>
-                  </div>
-
-                  <div>
-                    <Label className="text-gray-400">选择钱包</Label>
-                    <select
-                      className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2"
-                      value={transferForm.walletId}
-                      onChange={(e) => setTransferForm({...transferForm, walletId: e.target.value})}
-                    >
-                      <option value="">选择钱包</option>
-                      {wallets.map((wallet) => (
-                        <option key={wallet.id} value={wallet.id}>
-                          {wallet.name} ({wallet.chain.toUpperCase()}) - {wallet.balance}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <Label className="text-gray-400">接收地址</Label>
-                    <Input
-                      className="mt-1 bg-black/50 border-white/10 text-white"
-                      placeholder="0x... 或 Solana 地址"
-                      value={transferForm.toAddress}
-                      onChange={(e) => setTransferForm({...transferForm, toAddress: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-gray-400">代币符号 (可选)</Label>
-                    <Input
-                      className="mt-1 bg-black/50 border-white/10 text-white"
-                      placeholder="ETH 或留空转账原生代币"
-                      value={transferForm.tokenSymbol}
-                      onChange={(e) => setTransferForm({...transferForm, tokenSymbol: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-gray-400">转账数量</Label>
-                    <Input
-                      className="mt-1 bg-black/50 border-white/10 text-white"
-                      placeholder="1.0"
-                      type="number"
-                      step="0.0001"
-                      value={transferForm.amount}
-                      onChange={(e) => setTransferForm({...transferForm, amount: e.target.value})}
-                    />
+                    <CardTitle className="text-white">转账</CardTitle>
+                    <CardDescription className="text-gray-400">
+                      向其他地址转账代币
+                    </CardDescription>
                   </div>
                   <Button
-                    className="w-full bg-green-600 hover:bg-green-700"
-                    onClick={handleTransfer}
-                    disabled={isTransferring}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setBatchTransferMode(!batchTransferMode)}
+                    className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
                   >
-                    {isTransferring ? (
+                    {batchTransferMode ? (
                       <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        转账中...
+                        <ArrowRight className="mr-2 h-4 w-4" />
+                        单笔转账
                       </>
                     ) : (
                       <>
-                        <Send className="mr-2 h-4 w-4" />
-                        确认转账
+                        <Users className="mr-2 h-4 w-4" />
+                        批量转账
                       </>
                     )}
                   </Button>
                 </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!batchTransferMode ? (
+                  // 单笔转账
+                  <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                    <div>
+                      <Label className="text-gray-400">选择钱包</Label>
+                      <select
+                        className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2"
+                        value={transferForm.walletId}
+                        onChange={(e) => {
+                          const selectedWallet = wallets.find(w => w.id === e.target.value);
+                          setTransferForm({
+                            ...transferForm,
+                            walletId: e.target.value,
+                            chain: selectedWallet?.chain || 'solana',
+                            tokenSymbol: selectedWallet?.chain === 'solana' ? 'SOL' : selectedWallet?.chain === 'bsc' ? 'BNB' : 'ETH'
+                          });
+                        }}
+                      >
+                        <option value="">选择钱包</option>
+                        {wallets.map((wallet) => (
+                          <option key={wallet.id} value={wallet.id}>
+                            {wallet.name} ({wallet.chain.toUpperCase()}) - {wallet.balance}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-gray-400">区块链网络</Label>
+                      <select
+                        className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2"
+                        value={transferForm.chain}
+                        onChange={(e) => setTransferForm({
+                          ...transferForm,
+                          chain: e.target.value,
+                          tokenSymbol: e.target.value === 'solana' ? 'SOL' : e.target.value === 'bsc' ? 'BNB' : 'ETH'
+                        })}
+                      >
+                        <option value="solana">Solana</option>
+                        <option value="bsc">BSC (BNB Chain)</option>
+                        <option value="eth">Ethereum</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-gray-400">接收地址</Label>
+                      <Input
+                        className="mt-1 bg-black/50 border-white/10 text-white"
+                        placeholder="0x... 或 Solana 地址"
+                        value={transferForm.toAddress}
+                        onChange={(e) => setTransferForm({...transferForm, toAddress: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-gray-400">代币符号 (可选)</Label>
+                      <Input
+                        className="mt-1 bg-black/50 border-white/10 text-white"
+                        placeholder="留空转账原生代币"
+                        value={transferForm.tokenSymbol}
+                        onChange={(e) => setTransferForm({...transferForm, tokenSymbol: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-gray-400">转账数量</Label>
+                      <Input
+                        className="mt-1 bg-black/50 border-white/10 text-white"
+                        placeholder="1.0"
+                        type="number"
+                        step="0.0001"
+                        value={transferForm.amount}
+                        onChange={(e) => setTransferForm({...transferForm, amount: e.target.value})}
+                      />
+                    </div>
+                    <Button
+                      className="w-full bg-green-600 hover:bg-green-700"
+                      onClick={handleTransfer}
+                      disabled={isTransferring}
+                    >
+                      {isTransferring ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          转账中...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="mr-2 h-4 w-4" />
+                          确认转账
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                ) : (
+                  // 批量转账
+                  <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
+                    <div>
+                      <Label className="text-gray-400">选择钱包</Label>
+                      <select
+                        className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2"
+                        value={transferForm.walletId}
+                        onChange={(e) => {
+                          const selectedWallet = wallets.find(w => w.id === e.target.value);
+                          setTransferForm({
+                            ...transferForm,
+                            walletId: e.target.value,
+                            chain: selectedWallet?.chain || 'solana',
+                            tokenSymbol: selectedWallet?.chain === 'solana' ? 'SOL' : selectedWallet?.chain === 'bsc' ? 'BNB' : 'ETH'
+                          });
+                        }}
+                      >
+                        <option value="">选择钱包</option>
+                        {wallets.map((wallet) => (
+                          <option key={wallet.id} value={wallet.id}>
+                            {wallet.name} ({wallet.chain.toUpperCase()}) - {wallet.balance}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-gray-400">区块链网络</Label>
+                      <select
+                        className="mt-1 w-full bg-black/50 border border-white/10 text-white rounded-md p-2"
+                        value={transferForm.chain}
+                        onChange={(e) => setTransferForm({
+                          ...transferForm,
+                          chain: e.target.value,
+                          tokenSymbol: e.target.value === 'solana' ? 'SOL' : e.target.value === 'bsc' ? 'BNB' : 'ETH'
+                        })}
+                      >
+                        <option value="solana">Solana</option>
+                        <option value="bsc">BSC (BNB Chain)</option>
+                        <option value="eth">Ethereum</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-gray-400">代币符号</Label>
+                      <Input
+                        className="mt-1 bg-black/50 border-white/10 text-white"
+                        placeholder="留空转账原生代币"
+                        value={transferForm.tokenSymbol}
+                        onChange={(e) => setTransferForm({...transferForm, tokenSymbol: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-gray-400">批量转账列表</Label>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setBatchTransfers([...batchTransfers, { toAddress: '', amount: '' }])}
+                          className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          添加
+                        </Button>
+                      </div>
+                      {batchTransfers.length === 0 && (
+                        <p className="text-sm text-gray-500 text-center py-4">
+                          点击"添加"按钮添加转账记录
+                        </p>
+                      )}
+                      {batchTransfers.map((transfer, index) => (
+                        <div key={index} className="flex gap-2 items-start">
+                          <div className="flex-1 space-y-2">
+                            <Input
+                              className="bg-black/50 border-white/10 text-white"
+                              placeholder="接收地址"
+                              value={transfer.toAddress}
+                              onChange={(e) => {
+                                const newTransfers = [...batchTransfers];
+                                newTransfers[index].toAddress = e.target.value;
+                                setBatchTransfers(newTransfers);
+                              }}
+                            />
+                            <Input
+                              className="bg-black/50 border-white/10 text-white"
+                              placeholder="数量"
+                              type="number"
+                              step="0.0001"
+                              value={transfer.amount}
+                              onChange={(e) => {
+                                const newTransfers = [...batchTransfers];
+                                newTransfers[index].amount = e.target.value;
+                                setBatchTransfers(newTransfers);
+                              }}
+                            />
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const newTransfers = batchTransfers.filter((_, i) => i !== index);
+                              setBatchTransfers(newTransfers);
+                            }}
+                            className="text-red-400 hover:text-red-300"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    {batchTransfers.length > 0 && (
+                      <div className="p-3 bg-purple-900/20 rounded-lg border border-purple-500/30">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-400">总转账数量</span>
+                          <span className="text-white font-semibold">
+                            {batchTransfers.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0).toFixed(4)} {transferForm.tokenSymbol || transferForm.chain.toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm mt-1">
+                          <span className="text-gray-400">预估 Gas 费用</span>
+                          <span className="text-white font-semibold">
+                            ~{batchTransfers.length * 0.001} {transferForm.chain.toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    <Button
+                      className="w-full bg-green-600 hover:bg-green-700"
+                      onClick={handleBatchTransfer}
+                      disabled={isBatchTransferring || batchTransfers.length === 0}
+                    >
+                      {isBatchTransferring ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          批量转账中...
+                        </>
+                      ) : (
+                        <>
+                          <Users className="mr-2 h-4 w-4" />
+                          确认批量转账 ({batchTransfers.length} 笔)
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
