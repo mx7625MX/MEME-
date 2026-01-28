@@ -216,7 +216,7 @@ export async function POST(request: NextRequest) {
           liquidity: liquidityPool.totalLiquidity,
           price: initialPrice.toString(),
           marketCap: token.totalSupply ? (parseFloat(token.totalSupply) * initialPrice).toString() : '0',
-          updatedAt: new Date(),
+          updatedAt: new Date().toISOString().toISOString(),
         })
         .where(eq(tokens.address, tokenAddress));
     }

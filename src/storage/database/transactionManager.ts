@@ -72,7 +72,7 @@ export class TransactionManager {
     const validated = updateTransactionSchema.parse(data);
     const [transaction] = await db
       .update(transactions)
-      .set({ ...validated, updatedAt: new Date().toISOString() })
+      .set({ ...validated, updatedAt: new Date().toISOString().toISOString().toISOString() })
       .where(eq(transactions.id, id))
       .returning();
     return transaction || null;
@@ -89,7 +89,7 @@ export class TransactionManager {
       .set({
         status,
         txHash,
-        updatedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString().toISOString().toISOString(),
       })
       .where(eq(transactions.id, id))
       .returning();

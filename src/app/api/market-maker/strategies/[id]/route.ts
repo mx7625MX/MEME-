@@ -29,7 +29,7 @@ export async function PATCH(
     // 更新策略
     const updatedData = {
       ...body,
-      updatedAt: new Date(),
+      updatedAt: new Date().toISOString().toISOString(),
     };
 
     const validatedUpdateData = updateMarketMakerStrategySchema.parse(updatedData);
@@ -76,7 +76,7 @@ export async function DELETE(
     // 如果策略正在运行，先停止
     if (existingStrategy.status === 'running') {
       await db.update(marketMakerStrategies)
-        .set({ status: 'stopped', updatedAt: new Date() })
+        .set({ status: 'stopped', updatedAt: new Date().toISOString().toISOString() })
         .where(eq(marketMakerStrategies.id, id));
     }
 

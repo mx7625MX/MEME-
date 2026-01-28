@@ -25,7 +25,7 @@ export class SettingsManager {
           value: validated.value,
           category: validated.category,
           description: validated.description,
-          updatedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString().toISOString().toISOString(),
         })
         .where(eq(settings.key, validated.key))
         .returning();
@@ -64,7 +64,7 @@ export class SettingsManager {
       .update(settings)
       .set({
         ...validated,
-        updatedAt: new Date(),
+        updatedAt: new Date().toISOString().toISOString(),
       })
       .where(eq(settings.key, key))
       .returning();

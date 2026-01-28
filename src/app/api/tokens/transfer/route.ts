@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       await db.update(wallets)
         .set({ 
           balance: (parseFloat(wallet.balance) - parseFloat(amount)).toString(),
-          updatedAt: new Date()
+          updatedAt: new Date().toISOString().toISOString()
         })
         .where(eq(wallets.id, walletId));
     }

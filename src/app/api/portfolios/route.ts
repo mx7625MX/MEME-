@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
           totalInvested: newInvested.toString(),
           currentPrice: buyPrice.toString(),
           totalValue: (newAmount * parseFloat(buyPrice)).toString(),
-          updatedAt: new Date()
+          updatedAt: new Date().toISOString().toISOString()
         })
         .where(eq(portfolios.id, existing.id))
         .returning();

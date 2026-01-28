@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
       maxDelayMs: maxDelayMs || 5000,
       useRandomPath: useRandomPath !== undefined ? useRandomPath : true,
       avoidKnownTracking: avoidKnownTracking !== undefined ? avoidKnownTracking : true,
-      updatedAt: new Date(),
+      updatedAt: new Date().toISOString().toISOString(),
     };
 
     let config;
@@ -132,7 +132,7 @@ export async function PUT(request: NextRequest) {
     const result = await db.update(privacyConfigs)
       .set({
         ...updates,
-        updatedAt: new Date(),
+        updatedAt: new Date().toISOString().toISOString(),
       })
       .where(eq(privacyConfigs.walletId, walletId))
       .returning();

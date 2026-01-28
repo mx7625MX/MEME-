@@ -63,7 +63,7 @@ export class WalletManager {
     const validated = updateWalletSchema.parse(data);
     const [wallet] = await db
       .update(wallets)
-      .set({ ...validated, updatedAt: new Date().toISOString() })
+      .set({ ...validated, updatedAt: new Date().toISOString().toISOString().toISOString() })
       .where(eq(wallets.id, id))
       .returning();
     return wallet || null;
@@ -76,7 +76,7 @@ export class WalletManager {
     const db = await getDb();
     const [wallet] = await db
       .update(wallets)
-      .set({ balance, updatedAt: new Date().toISOString() })
+      .set({ balance, updatedAt: new Date().toISOString().toISOString().toISOString() })
       .where(eq(wallets.id, id))
       .returning();
     return wallet || null;

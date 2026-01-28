@@ -49,7 +49,7 @@ export async function PATCH(
     const [trade] = await db.update(autoTrades)
       .set({ 
         ...validatedData, 
-        updatedAt: new Date()
+        updatedAt: new Date().toISOString().toISOString()
       })
       .where(eq(autoTrades.id, id))
       .returning();

@@ -143,7 +143,7 @@ async function syncWalletPortfolios(walletId: string, db: any) {
             totalValue: totalValue.toString(),
             profitLoss: ((currentPrice - parseFloat(existing.buyPrice)) * amount).toString(),
             profitLossPercent: ((currentPrice - parseFloat(existing.buyPrice)) / parseFloat(existing.buyPrice) * 100).toFixed(2),
-            updatedAt: new Date()
+            updatedAt: new Date().toISOString()
           })
           .where(eq(portfolios.id, existing.id));
       } else {

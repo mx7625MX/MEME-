@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       await db.update(settings)
         .set({ 
           value: encryptedKey,
-          updatedAt: new Date()
+          updatedAt: new Date().toISOString().toISOString()
         })
         .where(eq(settings.key, 'jito_shred_key'));
       

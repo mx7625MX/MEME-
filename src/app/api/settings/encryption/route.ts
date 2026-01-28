@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
         await db.update(settings)
           .set({ 
             value: (result as any).newValue,
-            updatedAt: new Date()
+            updatedAt: new Date().toISOString()
           })
           .where(eq(settings.key, result.id));
         successCount++;
