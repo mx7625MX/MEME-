@@ -26,20 +26,25 @@ import { getDb } from 'coze-coding-dev-sdk';
 import { eq } from 'drizzle-orm';
 
 export class PrivacyProtectionService {
-  private heliusConnection: Connection;
+  private heliusConnection: Connection | null = null;
   private alchemyProviders: Map<string, ethers.JsonRpcProvider> = new Map();
 
   constructor() {
-    this.heliusConnection = new Connection(process.env.HELIUS_RPC_URL || '');
+    const heliusUrl = process.env.HELIUS_RPC_URL;
+    if (heliusUrl && (heliusUrl.startsWith('http://') || heliusUrl.startsWith('https://'))) {
+      this.heliusConnection = new Connection(heliusUrl);
+    }
     this.initializeAlchemyProviders();
   }
 
   private initializeAlchemyProviders() {
-    if (process.env.ALCHEMY_RPC_URL_ETH) {
-      this.alchemyProviders.set('ETH', new ethers.JsonRpcProvider(process.env.ALCHEMY_RPC_URL_ETH));
+    const ethUrl = process.env.ALCHEMY_RPC_URL_ETH;
+    if (ethUrl && (ethUrl.startsWith('http://') || ethUrl.startsWith('https://'))) {
+      this.alchemyProviders.set('ETH', new ethers.JsonRpcProvider(ethUrl));
     }
-    if (process.env.ALCHEMY_RPC_URL_BSC) {
-      this.alchemyProviders.set('BSC', new ethers.JsonRpcProvider(process.env.ALCHEMY_RPC_URL_BSC));
+    const bscUrl = process.env.ALCHEMY_RPC_URL_BSC;
+    if (bscUrl && (bscUrl.startsWith('http://') || bscUrl.startsWith('https://'))) {
+      this.alchemyProviders.set('BSC', new ethers.JsonRpcProvider(bscUrl));
     }
   }
 
@@ -250,6 +255,11 @@ export class PrivacyProtectionService {
    * 执行 Solana 转账
    */
   private async executeSolanaTransfer(hop: TransferHop): Promise<boolean> {
+    if (!this.heliusConnection) {
+      console.error('Solana connection not initialized');
+      return false;
+    }
+
     // 查询源钱包私钥
     const db = await getDb();
     const [walletRecord] = await db.select().from(wallets).where(eq(wallets.address, hop.fromAddress));
