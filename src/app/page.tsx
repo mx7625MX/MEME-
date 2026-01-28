@@ -417,14 +417,19 @@ export default function MemeMasterPro() {
 
     // 安全确认对话框
     const confirmMessage = `
-⚠️ 安全确认
+🔐 安全确认
 
 您即将导入一个${importType === 'mnemonic' ? '助记词' : '私钥'}钱包。
 
+安全保护：
+✓ 使用 AES-256-GCM 军用级加密
+✓ 加密密钥独立存储
+✓ 助记词和私钥全程加密
+
 重要提示：
-1. 助记词和私钥将被加密存储
-2. 这是沙箱测试环境，不适合存储大额资产
-3. 建议仅使用包含少量测试资金的钱包
+• 仅导入用于日常交易的资金
+• 不要导入包含全部资产的钱包
+• 建议使用专用的交易钱包
 
 确认要继续导入吗？
 `;
@@ -1804,17 +1809,17 @@ export default function MemeMasterPro() {
                 ) : (
                   // 导入钱包表单
                   <div className="space-y-3 p-4 bg-black/30 rounded-lg border border-white/10">
-                    {/* 安全警告 */}
-                    <div className="p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
+                    {/* 安全提示 */}
+                    <div className="p-3 bg-green-900/20 border border-green-500/30 rounded-lg">
                       <div className="flex items-start gap-2">
-                        <AlertTriangle className="h-5 w-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                        <Shield className="h-5 w-5 text-green-400 flex-shrink-0 mt-0.5" />
                         <div className="text-sm">
-                          <p className="text-yellow-400 font-medium mb-1">安全警告</p>
+                          <p className="text-green-400 font-medium mb-1">安全提示</p>
                           <p className="text-gray-300">
-                            ⚠️ 当前为沙箱测试环境，助记词和私钥将加密存储。请勿在此导入包含大量真实资产的钱包。
+                            ✅ 钱包数据使用 AES-256-GCM 强加密存储
                           </p>
                           <p className="text-gray-400 mt-1">
-                            建议：使用仅包含少量测试资产的钱包进行测试。
+                            建议：仅导入用于日常交易的资金，不要导入全部资产
                           </p>
                         </div>
                       </div>
