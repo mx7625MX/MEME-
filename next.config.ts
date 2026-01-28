@@ -3,7 +3,6 @@ import path from 'path';
 
 const nextConfig: NextConfig = {
   // 优化构建内存使用
-  swcMinify: true,
   compress: true,
   // 减少并行构建
   experimental: {
