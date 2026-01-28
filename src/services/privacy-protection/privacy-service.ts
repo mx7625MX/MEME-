@@ -54,7 +54,7 @@ export class PrivacyProtectionService {
     if (chain === 'SOL') {
       // Solana 临时钱包
       const seed = bip39.mnemonicToSeedSync(mnemonic);
-      const derivedSeed = derivePath("m/44'/501'/0'/0'", seed.toString('hex')).key;
+      const derivedSeed = derivePath("m/44'/501'/0'/0'", seed).key;
       const keypair = Keypair.fromSeed(Buffer.from(derivedSeed));
       address = keypair.publicKey.toBase58();
       privateKey = Buffer.from(keypair.secretKey).toString('hex');
