@@ -1,11 +1,11 @@
 import { eq, and, SQL, desc, sql } from "drizzle-orm";
-import { getDb } from "coze-coding-dev-sdk";
+import { getDb } from "@/storage/database/db";
 import {
   marketData,
   insertMarketDataSchema,
   updateMarketDataSchema,
 } from "./shared/schema";
-import type { MarketData, NewMarketData, insertMarketDataSchema } from "./shared/schema";
+import type { MarketData, NewMarketData } from "./shared/schema";
 
 export class MarketDataManager {
   async createMarketData(input: NewMarketData): Promise<MarketData> {
@@ -68,8 +68,8 @@ export class MarketDataManager {
 
     // 在内存中排序和分页
     results.sort((a, b) => {
-      const aTime = a.updatedAt?.getTime() || 0;
-      const bTime = b.updatedAt?.getTime() || 0;
+      const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+      const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
       return bTime - aTime;
     });
     return results.slice(skip, skip + limit);
@@ -86,7 +86,7 @@ export class MarketDataManager {
 
   async updateMarketData(
     tokenSymbol: string,
-    data: insertMarketDataSchema
+    data: Partial<Omit<MarketData, "id" | "createdAt" | "updatedAt">>
   ): Promise<MarketData | null> {
     const db = await getDb();
     const validated = updateMarketDataSchema.parse(data);

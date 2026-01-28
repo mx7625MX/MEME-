@@ -3,11 +3,12 @@ import { getDb } from "@/storage/database/db";
 import {
   transactions,
   insertTransactionSchema,
+  updateTransactionSchema,
 } from "./shared/schema";
 import type { Transaction, NewTransaction } from "./shared/schema";
 
 export class TransactionManager {
-  async createTransaction(data: InsertTransaction): Promise<Transaction> {
+  async createTransaction(data: NewTransaction): Promise<Transaction> {
     const db = await getDb();
     const validated = insertTransactionSchema.parse(data);
     const [transaction] = await db
@@ -66,7 +67,7 @@ export class TransactionManager {
 
   async updateTransaction(
     id: string,
-    data: insertTransactionSchema
+    data: Partial<Omit<Transaction, "id" | "createdAt" | "updatedAt">>
   ): Promise<Transaction | null> {
     const db = await getDb();
     const validated = updateTransactionSchema.parse(data);
@@ -80,7 +81,7 @@ export class TransactionManager {
 
   async updateTransactionStatus(
     id: string,
-    status: string,
+    status: Transaction["status"],
     txHash?: string
   ): Promise<Transaction | null> {
     const db = await getDb();

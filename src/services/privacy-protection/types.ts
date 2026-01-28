@@ -24,8 +24,8 @@ export interface HopWallet {
   privateKey: string;    // 加密存储
   chain: string;
   isTemporary: boolean;
-  createdAt: Date;
-  expiresAt?: Date;
+  createdAt: string;
+  expiresAt?: string;
 }
 
 export interface TransferHop {
@@ -60,8 +60,8 @@ export interface PrivacyTransferResult {
   status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
   path: PrivacyTransferPath;
   actualHops: TransferHop[];
-  startTime: Date;
-  completedTime?: Date;
+  startTime: string;
+  completedTime?: string;
   privacyScore: number;
   trackingDetection?: TrackingAnalysis;
 }
@@ -80,5 +80,5 @@ export interface WalletPrivacyReport {
   riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   trackingAnalysis: TrackingAnalysis;
   recommendations: string[];
-  lastAnalyzed: Date;
+  lastAnalyzed: string;
 }

@@ -19,7 +19,7 @@ export class TokenManager {
     skip?: number;
     limit?: number;
     filters?: Partial<Pick<Token, "chain" | "isHot">>;
-    sortBy?: "price" | "volume24h" | "marketCap" | "createdAt";
+    sortBy?: "price" | "volume24H" | "marketCap" | "createdAt";
   } = {}): Promise<Token[]> {
     const { skip = 0, limit = 100, filters = {}, sortBy = "createdAt" } = options;
     const db = await getDb();
@@ -45,14 +45,18 @@ export class TokenManager {
       case "price":
         results.sort((a, b) => parseFloat(b.price || '0') - parseFloat(a.price || '0'));
         break;
-      case "volume24h":
-        results.sort((a, b) => parseFloat(b.volume24h || '0') - parseFloat(a.volume24h || '0'));
+      case "volume24H":
+        results.sort((a, b) => parseFloat(b.volume24H || '0') - parseFloat(a.volume24H || '0'));
         break;
       case "marketCap":
         results.sort((a, b) => parseFloat(b.marketCap || '0') - parseFloat(a.marketCap || '0'));
         break;
       default:
-        results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        results.sort((a, b) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bTime - aTime;
+    });
     }
 
     // Apply pagination
@@ -86,7 +90,10 @@ export class TokenManager {
     return token || null;
   }
 
-  async updateToken(id: string, data: insertTokenSchema): Promise<Token | null> {
+  async updateToken(
+    id: string,
+    data: Partial<Omit<Token, "id" | "createdAt" | "updatedAt">>
+  ): Promise<Token | null> {
     const db = await getDb();
     const validated = updateTokenSchema.parse(data);
     const [token] = await db
@@ -100,14 +107,14 @@ export class TokenManager {
   async updateTokenPrice(
     id: string,
     price: string,
-    priceChange24h?: string
+    priceChange24H?: string
   ): Promise<Token | null> {
     const db = await getDb();
     const [token] = await db
       .update(tokens)
       .set({
         price,
-        priceChange24h,
+        priceChange24H,
         updatedAt: new Date().toISOString(),
       })
       .where(eq(tokens.id, id))
@@ -131,7 +138,7 @@ export class TokenManager {
       .select()
       .from(tokens)
       .where(eq(tokens.isHot, true))
-      .orderBy(desc(tokens.volume24h))
+      .orderBy(desc(tokens.volume24H))
       .limit(limit);
   }
 }

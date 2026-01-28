@@ -80,8 +80,8 @@ export class PrivacyProtectionService {
       privateKey: encryptedPrivateKey,
       chain,
       isTemporary: true,
-      createdAt: new Date(),
-      expiresAt: new Date(Date.now() + expiresInHours * 60 * 60 * 1000),
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + expiresInHours * 60 * 60 * 1000).toISOString(),
     };
 
     // 存储到数据库
@@ -187,7 +187,7 @@ export class PrivacyProtectionService {
       status: 'IN_PROGRESS',
       path,
       actualHops: [],
-      startTime: new Date(),
+      startTime: new Date().toISOString(),
       privacyScore: path.privacyScore,
     };
 
@@ -228,7 +228,7 @@ export class PrivacyProtectionService {
     }
 
     result.status = 'COMPLETED';
-    result.completedTime = new Date();
+    result.completedTime = new Date().toISOString();
     await this.updateTransferStatus(transferId, 'COMPLETED', result.completedTime);
 
     return result;
@@ -390,7 +390,7 @@ export class PrivacyProtectionService {
       riskLevel,
       trackingAnalysis,
       recommendations,
-      lastAnalyzed: new Date(),
+      lastAnalyzed: new Date().toISOString(),
     };
   }
 
@@ -578,7 +578,7 @@ export class PrivacyProtectionService {
   private async updateTransferStatus(
     transferId: string,
     status: 'COMPLETED' | 'FAILED',
-    completedTime?: Date
+    completedTime?: string
   ): Promise<void> {
     const db = await getDb();
     await db.update(privacyTransfers)

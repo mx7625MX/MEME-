@@ -410,10 +410,6 @@ export type NewAiSentiment = typeof aiSentiments.$inferInsert;
 export type MarketData = typeof marketData.$inferSelect;
 export type NewMarketData = typeof marketData.$inferInsert;
 
-// Settings types
-export type Setting = typeof settings.$inferSelect;
-export type NewSetting = typeof settings.$inferInsert;
-
 // Wallet types
 export type Wallet = typeof wallets.$inferSelect;
 export type NewWallet = typeof wallets.$inferInsert;
@@ -453,6 +449,19 @@ export type NewMarketMakerStrategyGroup = typeof marketMakerStrategyGroups.$infe
 // LiquidityPool types
 export type LiquidityPool = typeof liquidityPools.$inferSelect;
 export type NewLiquidityPool = typeof liquidityPools.$inferInsert;
+
+// 定义 LiquidityPool 的 metadata 类型
+export interface LiquidityPoolMetadata {
+  dexName?: string;
+  txHash?: string;
+  launchTxHash?: string;
+  lockDuration?: number;
+  [key: string]: any;
+}
+
+export type LiquidityPoolWithMetadata = LiquidityPool & {
+  metadata?: LiquidityPoolMetadata;
+};
 
 // PrivacyEventLog types
 export type PrivacyEventLog = typeof privacyEventLogs.$inferSelect;
@@ -510,6 +519,11 @@ export const insertSettingSchema = z.object({
 });
 
 export const updateSettingSchema = insertSettingSchema.partial();
+
+// Settings types
+export type Setting = typeof settings.$inferSelect;
+export type NewSetting = typeof settings.$inferInsert;
+export type UpdateSetting = typeof updateSettingSchema.type;
 
 // Wallet schemas
 export const insertWalletSchema = z.object({

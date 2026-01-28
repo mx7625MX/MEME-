@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { getDb } from "coze-coding-dev-sdk";
+import { getDb } from "@/storage/database/db";
 import {
   settings,
   insertSettingSchema,
@@ -73,8 +73,8 @@ export class SettingsManager {
 
   async deleteSetting(key: string): Promise<boolean> {
     const db = await getDb();
-    const result = await db.delete(settings).where(eq(settings.key, key));
-    return (result.rowCount ?? 0) > 0;
+    const result = await db.delete(settings).where(eq(settings.key, key)).returning();
+    return result.length > 0;
   }
 }
 

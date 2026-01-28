@@ -3,6 +3,7 @@ import { getDb } from "@/storage/database/db";
 import {
   wallets,
   insertWalletSchema,
+  updateWalletSchema,
 } from "./shared/schema";
 import type { Wallet, NewWallet } from "./shared/schema";
 
@@ -39,7 +40,11 @@ export class WalletManager {
     }
 
     // Sort and paginate in memory
-    results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    results.sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return dateB - dateA;
+    });
     return results.slice(skip, skip + limit);
   }
 
@@ -58,7 +63,10 @@ export class WalletManager {
     return wallet || null;
   }
 
-  async updateWallet(id: string, data: insertWalletSchema): Promise<Wallet | null> {
+  async updateWallet(
+    id: string,
+    data: Partial<Omit<Wallet, "id" | "createdAt" | "updatedAt">>
+  ): Promise<Wallet | null> {
     const db = await getDb();
     const validated = updateWalletSchema.parse(data);
     const [wallet] = await db
@@ -84,8 +92,8 @@ export class WalletManager {
 
   async deleteWallet(id: string): Promise<boolean> {
     const db = await getDb();
-    const result = await db.delete(wallets).where(eq(wallets.id, id));
-    return (result.rowCount ?? 0) > 0;
+    const result = await db.delete(wallets).where(eq(wallets.id, id)).returning();
+    return result.length > 0;
   }
 
   async getWalletStats(): Promise<{

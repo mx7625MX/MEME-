@@ -27,8 +27,8 @@ export async function GET(request: NextRequest) {
               price: (
                 parseFloat(token.price) * (1 + (Math.random() - 0.5) * 0.01)
               ).toFixed(8),
-              change24h: (
-                parseFloat(token.change24h || "0") +
+              change24H: (
+                parseFloat(token.change24H || "0") +
                 (Math.random() - 0.5) * 0.5
               ).toFixed(2),
             }));

@@ -7,8 +7,8 @@ import { PRICE_DATA_CONFIG } from '@/config/rpcConfig';
 
 export interface TokenPrice {
   price: number;
-  change24h: number;
-  volume24h?: number;
+  change24H: number;
+  volume24H?: number;
   marketCap?: number;
   liquidity?: number;
   timestamp: number;
@@ -58,7 +58,7 @@ export class PriceDataService {
 
       return {
         price: parseFloat(priceData.price),
-        change24h: 0, // Jupiter API 不提供 24h 变化
+        change24H: 0, // Jupiter API 不提供 24h 变化
         timestamp: Date.now(),
       };
     } catch (error) {
@@ -97,8 +97,8 @@ export class PriceDataService {
 
       return {
         price: parseFloat(pair.priceUsd),
-        change24h: parseFloat(pair.priceChange?.h24 || '0'),
-        volume24h: parseFloat(pair.volume?.h24 || '0'),
+        change24H: parseFloat(pair.priceChange?.h24 || '0'),
+        volume24H: parseFloat(pair.volume?.h24 || '0'),
         liquidity: parseFloat(pair.liquidity?.usd || '0'),
         timestamp: Date.now(),
       };
@@ -140,7 +140,7 @@ export class PriceDataService {
 
       return {
         price: parseFloat(priceData.usd),
-        change24h: parseFloat(priceData.usd_24h_change || '0'),
+        change24H: parseFloat(priceData.usd_24h_change || '0'),
         timestamp: Date.now(),
       };
     } catch (error) {
@@ -209,7 +209,7 @@ export class PriceDataService {
       if (priceData) {
         results[address] = {
           price: priceData.price,
-          change: priceData.change24h,
+          change: priceData.change24H,
         };
       }
     });

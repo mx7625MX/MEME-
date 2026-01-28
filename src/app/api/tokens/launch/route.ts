@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/storage/database/db';
 import { transactions, tokens, portfolios, liquidityPools, wallets } from '@/storage/database/shared/schema';
-import { insertTransactionSchema, insertTokenSchema, insertPortfolioSchema, insertLiquidityPoolSchema } from '@/storage/database/shared/schema';
+import { insertTransactionSchema, insertTokenSchema, insertPortfolioSchema, insertLiquidityPoolSchema, type LiquidityPoolWithMetadata } from '@/storage/database/shared/schema';
 import { eq } from 'drizzle-orm';
 
 // DEX 配置
@@ -243,7 +243,7 @@ export async function POST(request: NextRequest) {
     // ========================================
     // 自动添加流动性（做市值）- 仅适用于 AMM DEX
     // ========================================
-    let liquidityPool = null;
+    let liquidityPool: LiquidityPoolWithMetadata | null = null;
     let liquidityTransaction = null;
     
     // Bonding Curve 平台（pump.fun、four.meme）不需要添加流动性
@@ -306,9 +306,15 @@ export async function POST(request: NextRequest) {
       };
       
       const validatedPoolData = insertLiquidityPoolSchema.parse(newLiquidityPool);
-      [liquidityPool] = await db.insert(liquidityPools)
+      const insertedPool = await db.insert(liquidityPools)
         .values(validatedPoolData)
         .returning();
+
+      if (!insertedPool || insertedPool.length === 0) {
+        throw new Error('Failed to create liquidity pool');
+      }
+
+      liquidityPool = insertedPool[0] as LiquidityPoolWithMetadata;
       
       // 创建流动性添加交易记录
       const newLiquidityTransaction = {
@@ -431,9 +437,9 @@ export async function POST(request: NextRequest) {
             } else {
               // 全部卖出，标记为sold
               await db.update(portfolios)
-                .set({ 
+                .set({
                   status: 'sold',
-                  soldAt: new Date(),
+                  soldAt: new Date().toISOString(),
                   autoSellStatus: 'completed',
                   updatedAt: new Date().toISOString()
                 })
