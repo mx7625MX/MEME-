@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
         to,
         amount,
         network,
-        receipt.status === 1 ? 'success' : 'failed'
+        (receipt as any).status === 1 ? 'success' : 'failed'
       );
 
       // 返回结果
