@@ -35,7 +35,7 @@ export async function GET(
       .where(
         and(
           eq(transactions.walletId, strategy.walletId),
-          gte(transactions.createdAt, startDate),
+          gte(transactions.createdAt, startDate.toISOString()),
           // 通过 metadata 筛选该策略的交易
         )
       )

@@ -85,7 +85,7 @@ export async function POST(
       await db.update(portfolios)
         .set({ 
           status: 'sold',
-          soldAt: new Date(),
+          soldAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         })
         .where(eq(portfolios.id, id));

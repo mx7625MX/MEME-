@@ -584,7 +584,7 @@ export class PrivacyProtectionService {
     await db.update(privacyTransfers)
       .set({ 
         status,
-        completedTime: completedTime || new Date(),
+        completedTime: completedTime || new Date().toISOString(),
       })
       .where(eq(privacyTransfers.transferId, transferId));
   }

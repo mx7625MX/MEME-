@@ -1,13 +1,13 @@
 import { eq, and, SQL, desc, sql } from "drizzle-orm";
-import { getDb } from "coze-coding-dev-sdk";
+import { getDb } from "@/storage/database/db";
 import {
   aiSentiments,
   insertAiSentimentSchema,
 } from "./shared/schema";
-import type { AiSentiment, InsertAiSentiment } from "./shared/schema";
+import type { AiSentiment, NewAiSentiment } from "./shared/schema";
 
 export class AiSentimentManager {
-  async createSentiment(data: InsertAiSentiment): Promise<AiSentiment> {
+  async createSentiment(data: NewAiSentiment): Promise<AiSentiment> {
     const db = await getDb();
     const validated = insertAiSentimentSchema.parse(data);
     const [sentiment] = await db
@@ -47,7 +47,11 @@ export class AiSentimentManager {
     }
 
     // 在内存中排序和分页
-    results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    results.sort((a, b) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bTime - aTime;
+    });
     return results.slice(skip, skip + limit);
   }
 

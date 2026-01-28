@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
       .where(
         and(
           eq(transactions.tokenAddress, transaction.tokenAddress),
-          gte(transactions.createdAt, new Date(Date.now() - 60000)) // 最近1分钟
+          gte(transactions.createdAt, new Date(Date.now() - 60000).toISOString()) // 最近1分钟
         )
       )
       .orderBy(desc(transactions.createdAt))

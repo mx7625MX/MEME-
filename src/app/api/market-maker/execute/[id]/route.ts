@@ -579,7 +579,7 @@ export async function POST(
 
     // 更新策略状态为运行中
     await db.update(marketMakerStrategies)
-      .set({ status: 'running', lastExecutedAt: new Date() })
+      .set({ status: 'running', lastExecutedAt: new Date().toISOString() })
       .where(eq(marketMakerStrategies.id, id));
 
     // 根据触发类型执行不同的策略

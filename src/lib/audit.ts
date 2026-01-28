@@ -22,7 +22,7 @@ export async function logAuditEvent(event: string, details: Record<string, any>)
     await db.insert(auditLogs).values({
       event,
       details: JSON.stringify(details),
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
       severity: getSeverityFromEvent(event),
     });
   } catch (error) {
