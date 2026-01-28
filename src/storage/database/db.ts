@@ -6,19 +6,29 @@ let db: ReturnType<typeof drizzle> | null = null;
 
 /**
  * 获取数据库连接实例
- * 使用环境变量 PGDATABASE_URL 连接到 PostgreSQL 数据库
+ * 支持多种环境变量名称（按优先级）：
+ * 1. PGDATABASE_URL - 自定义配置
+ * 2. POSTGRES_URL - Vercel Postgres 默认
+ * 3. DATABASE_URL - 通用配置
  */
 export async function getDb() {
   if (db) {
     return db;
   }
 
-  const databaseUrl = process.env.PGDATABASE_URL;
+  // 支持多种环境变量名称
+  const databaseUrl =
+    process.env.PGDATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.DATABASE_URL;
 
   if (!databaseUrl) {
     throw new Error(
-      'PGDATABASE_URL 环境变量未设置。请在 Vercel Dashboard 中配置此环境变量。\n' +
-      '配置路径：Settings → Environment Variables → 添加 PGDATABASE_URL'
+      '数据库连接字符串未设置。请在 Vercel Dashboard 中配置以下环境变量之一：\n' +
+      '  - PGDATABASE_URL（推荐）\n' +
+      '  - POSTGRES_URL（Vercel Postgres 默认）\n' +
+      '  - DATABASE_URL（通用配置）\n\n' +
+      '配置路径：Settings → Environment Variables → 添加上述变量之一'
     );
   }
 
@@ -38,7 +48,7 @@ export async function getDb() {
     console.error('数据库连接失败:', error);
     throw new Error(
       `无法连接到数据库: ${error instanceof Error ? error.message : '未知错误'}\n` +
-      '请检查 PGDATABASE_URL 环境变量是否正确配置。'
+      '请检查数据库连接字符串是否正确配置。'
     );
   }
 }
