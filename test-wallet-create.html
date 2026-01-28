@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>钱包创建测试</title>
+</head>
+<body>
+  <h1>钱包创建 API 测试</h1>
+
+  <div>
+    <h2>创建钱包</h2>
+    <input type="text" id="walletName" placeholder="钱包名称" value="test-wallet">
+    <select id="chain">
+      <option value="solana">Solana</option>
+      <option value="eth">Ethereum</option>
+      <option value="bsc">BSC</option>
+    </select>
+    <button onclick="createWallet()">创建钱包</button>
+  </div>
+
+  <div id="result"></div>
+
+  <script>
+    async function createWallet() {
+      const name = document.getElementById('walletName').value;
+      const chain = document.getElementById('chain').value;
+      const resultDiv = document.getElementById('result');
+
+      resultDiv.innerHTML = '<p>正在创建钱包...</p>';
+
+      try {
+        const res = await fetch('/api/wallets/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, chain })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          resultDiv.innerHTML = `
+            <h3>✅ 钱包创建成功！</h3>
+            <p><strong>ID:</strong> ${data.data.id}</p>
+            <p><strong>名称:</strong> ${data.data.name}</p>
+            <p><strong>链:</strong> ${data.data.chain}</p>
+            <p><strong>地址:</strong> ${data.data.address}</p>
+            <p><strong>余额:</strong> ${data.data.balance}</p>
+          `;
+        } else {
+          resultDiv.innerHTML = `<h3>❌ 创建失败</h3><p>${data.error}</p>`;
+        }
+      } catch (error) {
+        resultDiv.innerHTML = `<h3>❌ 错误</h3><p>${error.message}</p>`;
+        console.error('Error:', error);
+      }
+    }
+  </script>
+</body>
+</html>

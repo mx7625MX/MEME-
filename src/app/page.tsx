@@ -284,10 +284,15 @@ export default function MemeMasterPro() {
 
   const loadWallets = async () => {
     try {
+      console.log('Loading wallets...');
       const res = await fetch(`${API_BASE}/wallets`);
       const data = await res.json();
+      console.log('Wallets response:', data);
+
       if (data.success) {
         setWallets(data.data);
+      } else {
+        console.error('Failed to load wallets:', data.error);
       }
     } catch (error) {
       console.error('Error loading wallets:', error);
@@ -362,27 +367,40 @@ export default function MemeMasterPro() {
 
   // 创建钱包
   const handleCreateWallet = async () => {
-    if (!newWalletName) return;
-    
+    if (!newWalletName) {
+      alert('请输入钱包名称');
+      return;
+    }
+
+    if (!selectedChain) {
+      alert('请选择区块链');
+      return;
+    }
+
     try {
       setIsCreatingWallet('creating');
+      console.log('Creating wallet:', { name: newWalletName, chain: selectedChain });
+
       const res = await fetch(`${API_BASE}/wallets/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newWalletName, chain: selectedChain })
       });
-      
+
       const data = await res.json();
+      console.log('Create wallet response:', data);
+
       if (data.success) {
         setNewWalletName('');
-        loadWallets();
-        loadStats();
+        await loadWallets();
+        await loadStats();
+        alert(`钱包创建成功！\n\n地址: ${data.data.address}`);
       } else {
-        alert(data.error || '创建失败');
+        alert(`创建失败：${data.error || '未知错误'}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating wallet:', error);
-      alert('创建失败');
+      alert(`创建失败：${error.message || '网络错误，请重试'}`);
     } finally {
       setIsCreatingWallet('');
     }
