@@ -552,7 +552,7 @@ export class PrivacyProtectionService {
     const db = await getDb();
     const [config] = await db.select().from(privacyConfigs).where(eq(privacyConfigs.walletId, walletId));
 
-    return config || {
+    return (config as unknown as PrivacyConfig) || {
       walletId,
       privacyLevel: PrivacyLevel.MEDIUM,
       enableAutoPrivacy: false,
