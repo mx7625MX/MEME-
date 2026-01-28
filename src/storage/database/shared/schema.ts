@@ -713,3 +713,18 @@ export const insertHopWalletSchema = z.object({
 });
 
 export const updateHopWalletSchema = insertHopWalletSchema.partial();
+
+
+// BotDetectionLog schemas
+export const insertBotDetectionLogSchema = z.object({
+  walletAddress: z.string().max(128),
+  tokenAddress: z.string().max(128),
+  platform: z.string().max(32),
+  detectionType: z.string().max(32),
+  confidence: z.string(),
+  details: z.any().default({}),
+  actionTaken: z.string().max(32).default('none'),
+  strategyId: z.string().max(36).optional(),
+});
+
+export const updateBotDetectionLogSchema = insertBotDetectionLogSchema.partial();
