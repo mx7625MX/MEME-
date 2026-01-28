@@ -218,6 +218,10 @@ export async function sendTransaction(
   // 等待交易确认
   const receipt = await sentTx.wait();
 
+  if (!receipt) {
+    throw new Error('Transaction receipt is null');
+  }
+
   return {
     txHash: receipt.hash,
     blockNumber: receipt.blockNumber,
