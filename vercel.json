@@ -1,8 +1,14 @@
 {
-  "buildCommand": "pnpm install && pnpm run build",
+  "buildCommand": "pnpm install && npx next build",
   "outputDirectory": ".next",
-  "devCommand": "pnpm run dev",
-  "installCommand": "pnpm install",
   "framework": "nextjs",
-  "regions": ["hkg1", "sin1"]
+  "regions": ["hkg1", "sin1"],
+  "functions": {
+    "app/api/**": {
+      "maxDuration": 60
+    }
+  },
+  "env": {
+    "NODE_ENV": "production"
+  }
 }

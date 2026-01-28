@@ -1,384 +1,364 @@
-# Meme Master Pro 部署指南
+# Vercel 部署指南
 
-## 目录
-- [前置要求](#前置要求)
-- [Docker 部署（推荐）](#docker-部署推荐)
-- [手动部署](#手动部署)
-- [云平台部署](#云平台部署)
-- [常见问题](#常见问题)
-
----
+本指南将帮助您将 Meme Master Pro 部署到 Vercel。
 
 ## 前置要求
 
-### 系统要求
-- **操作系统**: Linux (Ubuntu 20.04+)、macOS 或 Windows (WSL2)
-- **内存**: 最小 2GB，推荐 4GB+
-- **磁盘**: 最小 10GB 可用空间
-- **CPU**: 最小 2 核
+- [ ] GitHub 账号（用于托管代码）
+- [ ] Vercel 账号（免费部署）
+- [ ] PostgreSQL 数据库（推荐 Supabase、Neon 或 Vercel Postgres）
 
-### 软件要求
-- **Docker**: 20.10+
-- **Docker Compose**: 2.0+
-- **Node.js**: 24+ (如果手动部署)
-- **pnpm**: 9.0.0+
+## 部署步骤
 
----
+### 步骤 1: 准备代码仓库
 
-## Docker 部署（推荐）
-
-### 1. 克隆项目
+#### 1.1 初始化 Git 仓库（如果还没有）
 
 ```bash
-git clone <your-repository-url>
-cd meme-master-pro
+cd /workspace/projects
+git init
+git add .
+git commit -m "Initial commit: Meme Master Pro - Type-safe DeFi trading platform"
 ```
 
-### 2. 配置环境变量
+#### 1.2 创建 GitHub 仓库
+
+1. 登录 [GitHub](https://github.com)
+2. 点击右上角 `+` > `New repository`
+3. 填写仓库名称（例如：`meme-master-pro`）
+4. 设置为 `Private`（推荐，保护敏感数据）
+5. 点击 `Create repository`
+6. 按照提示执行以下命令：
 
 ```bash
-cp .env.example .env
+git remote add origin https://github.com/YOUR_USERNAME/meme-master-pro.git
+git branch -M main
+git push -u origin main
 ```
 
-编辑 `.env` 文件，配置必要的环境变量：
+### 步骤 2: 设置 PostgreSQL 数据库
+
+#### 选项 A: 使用 Vercel Postgres（推荐）
+
+1. 登录 [Vercel Dashboard](https://vercel.com/dashboard)
+2. 进入您的项目（稍后创建）
+3. 点击 `Storage` 标签
+4. 点击 `Create Database`
+5. 选择 `Postgres`
+6. 点击 `Continue`，等待数据库创建完成
+7. 记下 `POSTGRES_URL` 和 `POSTGRES_PRISMA_URL`
+
+#### 选项 B: 使用 Supabase
+
+1. 访问 [Supabase](https://supabase.com)
+2. 创建新项目
+3. 在项目设置中获取连接字符串
+4. 连接字符串格式：`postgresql://postgres:[YOUR-PASSWORD]@db.[YOUR-PROJECT].supabase.co:5432/postgres`
+
+#### 选项 C: 使用 Neon
+
+1. 访问 [Neon](https://neon.tech)
+2. 创建新项目
+3. 获取连接字符串
+
+### 步骤 3: 运行数据库迁移
+
+在部署前，需要创建数据库表结构。
+
+#### 3.1 使用 Drizzle Kit 推送 Schema
 
 ```bash
-# 数据库配置
-DATABASE_URL=postgresql://memeuser:memepassword123@localhost:5432/mememaster
-
-# 钱包加密密钥（重要！请生成一个安全的随机字符串）
-WALLET_ENCRYPTION_KEY=your-secure-random-key-here
-
-# RPC 配置（可选）
-SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
-ETHEREUM_RPC_URL=https://eth.llamarpc.com
-BSC_RPC_URL=https://bsc-dataseed.binance.org
+# 在本地开发环境
+pnpm exec drizzle-kit push:pg --config=drizzle.config.ts
 ```
 
-### 3. 生成安全的加密密钥
+#### 3.2 或者使用 SQL 脚本
+
+在 Vercel Dashboard 的数据库管理界面中，执行以下 SQL 脚本（参考 `src/storage/database/shared/schema.ts`）：
+
+```sql
+-- 创建所有表（根据 schema.ts 中的定义）
+-- 示例：创建 wallets 表
+CREATE TABLE IF NOT EXISTS wallets (
+  id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(128) NOT NULL,
+  chain VARCHAR(20) NOT NULL,
+  address VARCHAR(256) NOT NULL UNIQUE,
+  balance NUMERIC(30, 18) DEFAULT '0' NOT NULL,
+  mnemonic TEXT,
+  private_key TEXT,
+  is_active BOOLEAN DEFAULT true NOT NULL,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ
+);
+
+-- 创建索引
+CREATE INDEX IF NOT EXISTS wallets_address_idx ON wallets(address);
+CREATE INDEX IF NOT EXISTS wallets_chain_idx ON wallets(chain);
+
+-- 重复上述步骤创建所有表...
+```
+
+### 步骤 4: 在 Vercel 中创建项目
+
+#### 4.1 导入项目
+
+1. 登录 [Vercel Dashboard](https://vercel.com/dashboard)
+2. 点击 `Add New` > `Project`
+3. 选择 `Continue with GitHub`
+4. 授权 Vercel 访问您的 GitHub 账号
+5. 选择刚创建的 `meme-master-pro` 仓库
+6. 点击 `Import`
+
+#### 4.2 配置项目设置
+
+在项目配置页面：
+
+**Framework Preset**: Next.js
+**Root Directory**: `./`（留空）
+**Build Command**: `pnpm install && npx next build`
+**Output Directory**: `.next`
+
+点击 `Continue`
+
+### 步骤 5: 配置环境变量
+
+在 Vercel Dashboard 的 `Environment Variables` 部分配置以下变量：
+
+#### 必需的环境变量
+
+| 变量名 | 说明 | 示例值 |
+|--------|------|--------|
+| `PGDATABASE_URL` | PostgreSQL 连接字符串 | `postgresql://postgres:pass@host:5432/db` |
+| `ENCRYPTION_KEY` | 加密密钥（64位十六进制） | `abcdef1234...` |
+| `ENCRYPTION_SALT` | 加密盐值（32位十六进制） | `0123456789abcdef...` |
+| `WALLET_PRIVATE_KEY` | 主钱包私钥 | `0x1234...` |
+| `NEXT_PUBLIC_APP_URL` | 应用 URL | `https://your-app.vercel.app` |
+
+#### 可选的环境变量
+
+| 变量名 | 说明 |
+|--------|------|
+| `SOLANA_RPC_URL` | Solana RPC 节点 URL |
+| `ETH_RPC_URL` | Ethereum RPC 节点 URL |
+| `BSC_RPC_URL` | BSC RPC 节点 URL |
+| `S3_ACCESS_KEY` | 对象存储访问密钥 |
+| `S3_SECRET_KEY` | 对象存储密钥 |
+| `S3_ENDPOINT` | 对象存储端点 |
+| `S3_BUCKET` | 对象存储桶名 |
+
+#### 生成加密密钥
 
 ```bash
-# 使用 OpenSSL 生成随机密钥
-openssl rand -base64 32
+# 生成 ENCRYPTION_KEY（64位十六进制）
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# 生成 ENCRYPTION_SALT（32位十六进制）
+node -e "console.log(require('crypto').randomBytes(16).toString('hex'))"
 ```
 
-将生成的密钥填入 `.env` 文件的 `WALLET_ENCRYPTION_KEY`。
+### 步骤 6: 部署
 
-### 4. 一键部署
+点击 `Deploy` 按钮，等待部署完成。
+
+部署过程通常需要 2-5 分钟，包括：
+- 安装依赖
+- 构建应用
+- 部署到 Vercel 的边缘网络
+
+### 步骤 7: 验证部署
+
+#### 7.1 检查部署状态
+
+1. 在 Vercel Dashboard 查看部署状态
+2. 确认所有步骤都成功完成
+
+#### 7.2 测试应用
+
+1. 访问部署的 URL（例如：`https://meme-master-pro.vercel.app`）
+2. 测试基本功能：
+   - 首页是否正常加载
+   - API 路由是否响应
+   - 数据库连接是否正常
+
+#### 7.3 查看 API 响应
 
 ```bash
-chmod +x deploy.sh
-./deploy.sh
+# 测试市场数据 API
+curl https://meme-master-pro.vercel.app/api/market
+
+# 测试钱包列表 API
+curl https://meme-master-pro.vercel.app/api/wallets
 ```
 
-### 5. 验证部署
+### 步骤 8: 配置自定义域名（可选）
 
-```bash
-# 检查容器状态
-docker-compose ps
+1. 在 Vercel Dashboard 中，点击 `Settings` > `Domains`
+2. 点击 `Add`，输入您的域名（例如：`app.mmemaster.com`）
+3. 按照提示配置 DNS 记录
+4. 等待 SSL 证书自动颁发
 
-# 查看日志
-docker-compose logs -f app
+## 部署检查清单
 
-# 测试应用
-curl http://localhost:5000
-```
+### 部署前检查
 
-### 6. 常用命令
+- [ ] 代码已推送到 GitHub
+- [ ] `.gitignore` 正确配置（不要提交 `.env` 文件）
+- [ ] 数据库已创建
+- [ ] 数据库表结构已创建
+- [ ] 所有必需的环境变量已配置
+- [ ] TypeScript 编译无错误（`pnpm exec tsc --noEmit`）
+- [ ] 本地测试通过
 
-```bash
-# 查看日志
-docker-compose logs -f app
+### 部署后检查
 
-# 重启应用
-docker-compose restart app
-
-# 停止服务
-docker-compose down
-
-# 停止服务并删除数据
-docker-compose down -v
-
-# 进入容器
-docker-compose exec app bash
-
-# 更新代码
-git pull
-docker-compose up -d --build
-```
-
----
-
-## 手动部署
-
-### 1. 安装依赖
-
-**Ubuntu/Debian:**
-```bash
-# 更新系统
-sudo apt update && sudo apt upgrade -y
-
-# 安装 Node.js 24
-curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
-sudo apt install -y nodejs
-
-# 安装 pnpm
-npm install -g pnpm@9.0.0
-
-# 安装 PostgreSQL
-sudo apt install -y postgresql postgresql-contrib
-```
-
-**macOS:**
-```bash
-# 安装 Homebrew
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# 安装依赖
-brew install node@24 pnpm postgresql
-```
-
-### 2. 配置数据库
-
-```bash
-# 启动 PostgreSQL
-sudo systemctl start postgresql
-
-# 创建用户和数据库
-sudo -u postgres psql << EOF
-CREATE USER memeuser WITH PASSWORD 'memepassword123';
-CREATE DATABASE mememaster OWNER memeuser;
-GRANT ALL PRIVILEGES ON DATABASE mememaster TO memeuser;
-EOF
-```
-
-### 3. 安装项目依赖
-
-```bash
-# 安装依赖
-pnpm install --frozen-lockfile
-
-# 构建项目
-pnpm run build
-```
-
-### 4. 配置环境变量
-
-```bash
-cp .env.example .env
-nano .env
-```
-
-编辑 `.env` 文件，配置数据库连接：
-```bash
-DATABASE_URL=postgresql://memeuser:memepassword123@localhost:5432/mememaster
-```
-
-### 5. 启动应用
-
-**开发模式:**
-```bash
-pnpm run dev
-```
-
-**生产模式:**
-```bash
-pnpm run build
-pnpm run start
-```
-
-### 6. 使用 PM2 管理进程（推荐）
-
-```bash
-# 安装 PM2
-npm install -g pm2
-
-# 启动应用
-pm2 start "pnpm run start" --name meme-master
-
-# 查看状态
-pm2 status
-
-# 查看日志
-pm2 logs meme-master
-
-# 重启应用
-pm2 restart meme-master
-
-# 设置开机自启
-pm2 startup
-pm2 save
-```
-
----
-
-## 云平台部署
-
-### Vercel 部署
-
-1. 连接 GitHub 仓库到 Vercel
-2. 配置环境变量
-3. 部署（自动）
-
-### Railway 部署
-
-1. 连接 GitHub 仓库
-2. 添加 PostgreSQL 插件
-3. 配置环境变量
-4. 部署
-
-### AWS ECS 部署
-
-1. 创建 ECR 仓库
-2. 推送 Docker 镜像
-3. 创建 ECS 任务定义
-4. 配置负载均衡器
-5. 部署服务
-
----
-
-## 生产环境优化
-
-### 1. 使用 Nginx 反向代理
-
-```bash
-# 安装 Nginx
-sudo apt install -y nginx
-
-# 复制配置文件
-sudo cp nginx.conf /etc/nginx/sites-available/meme-master
-
-# 创建软链接
-sudo ln -s /etc/nginx/sites-available/meme-master /etc/nginx/sites-enabled/
-
-# 测试配置
-sudo nginx -t
-
-# 重启 Nginx
-sudo systemctl restart nginx
-```
-
-### 2. 配置 SSL 证书
-
-```bash
-# 安装 Certbot
-sudo apt install -y certbot python3-certbot-nginx
-
-# 获取证书
-sudo certbot --nginx -d your-domain.com
-```
-
-### 3. 配置防火墙
-
-```bash
-# UFW 防火墙
-sudo ufw allow 22/tcp
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-sudo ufw enable
-```
-
-### 4. 定期备份
-
-```bash
-# 备份数据库
-docker exec meme-master-postgres pg_dump -U memeuser mememaster > backup_$(date +%Y%m%d).sql
-
-# 恢复数据库
-docker exec -i meme-master-postgres psql -U memeuser mememaster < backup_20250127.sql
-```
-
----
+- [ ] 部署成功，无错误
+- [ ] 首页可以正常访问
+- [ ] API 路由响应正常
+- [ ] 数据库连接正常
+- [ ] 静态资源加载正常
+- [ ] Console 中无 JavaScript 错误
 
 ## 常见问题
 
-### 1. 数据库连接失败
+### Q1: 部署失败，提示 "PGDATABASE_URL not set"
 
-**错误信息**: `Connection refused`
+**解决方法**：在 Vercel Dashboard 的 Environment Variables 中添加 `PGDATABASE_URL`。
 
-**解决方案:**
-- 检查 PostgreSQL 是否运行
-- 检查 DATABASE_URL 配置
-- 检查防火墙设置
+### Q2: 部署成功，但 API 返回 500 错误
 
-### 2. 端口被占用
+**解决方法**：
+1. 检查 Vercel Dashboard 的 Function Logs
+2. 确认数据库连接字符串正确
+3. 确认数据库表结构已创建
 
-**错误信息**: `Port 5000 is already in use`
+### Q3: 无法访问数据库
 
-**解决方案:**
-```bash
-# 查找占用端口的进程
-lsof -i :5000
+**解决方法**：
+1. 确认数据库已启动
+2. 检查防火墙设置（允许 Vercel IP 访问）
+3. 使用 Supabase/Neon/Vercel Postgres 等云数据库
 
-# 杀死进程
-kill -9 <PID>
+### Q4: 构建失败，提示 "Out of memory"
 
-# 或修改端口
-export PORT=3000
+**解决方法**：在 `vercel.json` 中增加内存限制（需要付费计划）。
+
+### Q5: 热更新不生效
+
+**解决方法**：Vercel 部署后需要重新构建，不会像本地开发环境那样热更新。
+
+## 性能优化
+
+### 1. 启用 Edge Functions
+
+```json
+// vercel.json
+{
+  "functions": {
+    "app/api/**": {
+      "maxDuration": 60
+    }
+  }
+}
 ```
 
-### 3. 依赖安装失败
+### 2. 配置 CDN 区域
 
-**解决方案:**
-```bash
-# 清理缓存
-pnpm store prune
+选择离用户最近的区域：
+- 香港 (`hkg1`) - 适合中国大陆用户
+- 新加坡 (`sin1`) - 适合东南亚用户
+- 东京 (`tyo1`) - 适合日本用户
 
-# 重新安装
-rm -rf node_modules
-pnpm install
+### 3. 启用 Image Optimization
+
+Vercel 自动优化图片，无需额外配置。
+
+### 4. 启用缓存
+
+```typescript
+// API 路由中设置缓存头
+export async function GET() {
+  return new Response(JSON.stringify(data), {
+    headers: {
+      'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300'
+    }
+  });
+}
 ```
 
-### 4. Docker 容器无法启动
+## 监控和日志
 
-**解决方案:**
+### Vercel Analytics
+
+1. 在 Vercel Dashboard 中安装 Analytics
+2. 查看访问量、页面加载时间等指标
+
+### 查看日志
+
 ```bash
-# 查看日志
-docker-compose logs app
+# 使用 Vercel CLI
+vercel logs
 
-# 重新构建
-docker-compose build --no-cache
-
-# 检查磁盘空间
-df -h
+# 查看特定函数的日志
+vercel logs --filter=api/market
 ```
+
+## 回滚部署
+
+如果新部署出现问题，可以快速回滚到之前版本：
+
+1. 进入 Vercel Dashboard
+2. 点击 `Deployments`
+3. 找到之前的成功部署
+4. 点击 `...` > `Promote to Production`
+
+## 成本
+
+### Vercel 免费计划
+
+- 每月 100GB 带宽
+- 无限函数调用
+- 6,000 分钟执行时间
+- 100 个构建/月
+
+### 付费计划
+
+如果超出免费额度，可以考虑：
+- **Pro Plan** ($20/月)：无限构建，更多带宽
+- **Enterprise**：自定义配置
+
+### 数据库成本
+
+- **Vercel Postgres**: 免费计划 512MB
+- **Supabase**: 免费计划 500MB
+- **Neon**: 免费计划 0.5GB
+
+## 安全建议
+
+1. **环境变量**: 不要将敏感信息提交到 Git
+2. **私有仓库**: 设置 GitHub 仓库为 Private
+3. **API 密钥**: 定期轮换 API 密钥
+4. **数据库**: 使用强密码，限制访问 IP
+5. **HTTPS**: Vercel 自动提供 SSL 证书
+6. **速率限制**: 在 API 路由中实现速率限制
+
+## 下一步
+
+部署完成后，可以考虑：
+
+1. **设置 CI/CD**: 配置自动部署
+2. **添加测试**: 集成单元测试和 E2E 测试
+3. **配置监控**: 设置错误追踪（如 Sentry）
+4. **优化 SEO**: 添加元数据和 sitemap
+5. **多区域部署**: 在多个区域部署以提高性能
+
+## 支持
+
+- [Vercel 文档](https://vercel.com/docs)
+- [Next.js 部署文档](https://nextjs.org/docs/deployment)
+- [项目 Issues](https://github.com/YOUR_USERNAME/meme-master-pro/issues)
 
 ---
 
-## 监控和维护
-
-### 应用监控
-
-```bash
-# 查看应用日志
-docker-compose logs -f app
-
-# 查看数据库日志
-docker-compose logs postgres
-
-# 查看容器资源使用
-docker stats
-```
-
-### 性能优化
-
-1. **数据库优化**
-   - 定期 VACUUM
-   - 创建索引
-   - 调整连接池大小
-
-2. **应用优化**
-   - 启用 CDN
-   - 配置缓存
-   - 压缩静态资源
-
-3. **安全加固**
-   - 定期更新依赖
-   - 配置防火墙
-   - 启用 HTTPS
-
----
-
-## 技术支持
-
-如有问题，请提交 Issue 或联系技术支持。
+**祝部署顺利！🚀**
