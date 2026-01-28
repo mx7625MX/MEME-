@@ -86,7 +86,7 @@ export async function POST(
         .set({ 
           status: 'sold',
           soldAt: new Date(),
-          updatedAt: new Date().toISOString().toISOString()
+          updatedAt: new Date().toISOString()
         })
         .where(eq(portfolios.id, id));
     } else {
@@ -97,7 +97,7 @@ export async function POST(
           totalValue: (remainingAmount * sellPrice).toString(),
           profitLoss: profitLoss.toString(),
           profitLossPercent: profitLossPercent.toFixed(2),
-          updatedAt: new Date().toISOString().toISOString()
+          updatedAt: new Date().toISOString()
         })
         .where(eq(portfolios.id, id));
     }
@@ -108,7 +108,7 @@ export async function POST(
       await db.update(wallets)
         .set({ 
           balance: (parseFloat(wallet.balance) + estimatedReceive).toString(),
-          updatedAt: new Date().toISOString().toISOString()
+          updatedAt: new Date().toISOString()
         })
         .where(eq(wallets.id, portfolio.walletId));
     }

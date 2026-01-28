@@ -343,7 +343,7 @@ export async function POST(request: NextRequest) {
           liquidity: liquidityPool.totalLiquidity,
           price: initialPrice.toString(),
           marketCap: (parseFloat(totalSupply) * initialPrice).toString(),
-          updatedAt: new Date().toISOString().toISOString(),
+          updatedAt: new Date().toISOString(),
         })
         .where(eq(tokens.address, mockTokenAddress));
     }
@@ -425,7 +425,7 @@ export async function POST(request: NextRequest) {
                   profitLoss: profitLoss.toString(),
                   profitLossPercent: profitLossPercent.toFixed(2),
                   autoSellStatus: 'idle', // 继续监控剩余持仓
-                  updatedAt: new Date().toISOString().toISOString()
+                  updatedAt: new Date().toISOString()
                 })
                 .where(eq(portfolios.id, portfolio.id));
             } else {
@@ -435,7 +435,7 @@ export async function POST(request: NextRequest) {
                   status: 'sold',
                   soldAt: new Date(),
                   autoSellStatus: 'completed',
-                  updatedAt: new Date().toISOString().toISOString()
+                  updatedAt: new Date().toISOString()
                 })
                 .where(eq(portfolios.id, portfolio.id));
             }
@@ -446,7 +446,7 @@ export async function POST(request: NextRequest) {
               await db.update(wallets)
                 .set({ 
                   balance: (parseFloat(wallet.balance) + estimatedReceive).toString(),
-                  updatedAt: new Date().toISOString().toISOString()
+                  updatedAt: new Date().toISOString()
                 })
                 .where(eq(wallets.id, walletId));
             }

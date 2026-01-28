@@ -25,7 +25,7 @@ export async function PATCH(
 
     // 更新自动闪电卖出配置
     const updateData: any = {
-      updatedAt: new Date().toISOString().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     if ('autoSellEnabled' in body) {

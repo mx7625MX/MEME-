@@ -229,7 +229,7 @@ async function executeFlashSell(portfolio: any, db: any, reason: string, whaleAm
         timedSellExecutedAt: new Date(),
         soldAt: new Date(),
         lastAutoSellAt: new Date(),
-        updatedAt: new Date().toISOString().toISOString()
+        updatedAt: new Date().toISOString()
       })
       .where(eq(portfolios.id, portfolio.id));
   } else {
@@ -244,7 +244,7 @@ async function executeFlashSell(portfolio: any, db: any, reason: string, whaleAm
         autoSellStatus: 'completed',
         timedSellExecutedAt: new Date(),
         lastAutoSellAt: new Date(),
-        updatedAt: new Date().toISOString().toISOString()
+        updatedAt: new Date().toISOString()
       })
       .where(eq(portfolios.id, portfolio.id));
   }
@@ -255,7 +255,7 @@ async function executeFlashSell(portfolio: any, db: any, reason: string, whaleAm
     await db.update(wallets)
       .set({ 
         balance: (parseFloat(wallet.balance) + estimatedReceive).toString(),
-        updatedAt: new Date().toISOString().toISOString()
+        updatedAt: new Date().toISOString()
       })
       .where(eq(wallets.id, portfolio.walletId));
   }
@@ -311,7 +311,7 @@ export async function POST(request: NextRequest) {
             totalValue: (parseFloat(portfolio.amount) * checkResult.currentPrice).toString(),
             profitLoss: ((checkResult.currentPrice - parseFloat(portfolio.buyPrice)) * parseFloat(portfolio.amount)).toString(),
             profitLossPercent: currentProfitPercent.toFixed(2),
-            updatedAt: new Date().toISOString().toISOString()
+            updatedAt: new Date().toISOString()
           })
           .where(eq(portfolios.id, portfolio.id));
 
@@ -320,7 +320,7 @@ export async function POST(request: NextRequest) {
           await db.update(portfolios)
             .set({
               autoSellStatus: 'triggered',
-              updatedAt: new Date().toISOString().toISOString()
+              updatedAt: new Date().toISOString()
             })
             .where(eq(portfolios.id, portfolio.id));
 

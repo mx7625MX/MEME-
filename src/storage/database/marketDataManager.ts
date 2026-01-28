@@ -31,7 +31,7 @@ export class MarketDataManager {
     if (existing) {
       const [updated] = await db
         .update(marketData)
-        .set({ ...validated, updatedAt: new Date().toISOString().toISOString().toISOString() })
+        .set({ ...validated, updatedAt: new Date().toISOString() })
         .where(eq(marketData.tokenSymbol, tokenSymbol))
         .returning();
       return updated;
@@ -92,7 +92,7 @@ export class MarketDataManager {
     const validated = updateMarketDataSchema.parse(data);
     const [updated] = await db
       .update(marketData)
-      .set({ ...validated, updatedAt: new Date().toISOString().toISOString().toISOString() })
+      .set({ ...validated, updatedAt: new Date().toISOString() })
       .where(eq(marketData.tokenSymbol, tokenSymbol))
       .returning();
     return updated || null;

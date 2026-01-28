@@ -91,7 +91,7 @@ export class TokenManager {
     const validated = updateTokenSchema.parse(data);
     const [token] = await db
       .update(tokens)
-      .set({ ...validated, updatedAt: new Date().toISOString().toISOString().toISOString() })
+      .set({ ...validated, updatedAt: new Date().toISOString() })
       .where(eq(tokens.id, id))
       .returning();
     return token || null;
@@ -108,7 +108,7 @@ export class TokenManager {
       .set({
         price,
         priceChange24h,
-        updatedAt: new Date().toISOString().toISOString().toISOString(),
+        updatedAt: new Date().toISOString(),
       })
       .where(eq(tokens.id, id))
       .returning();
@@ -120,7 +120,7 @@ export class TokenManager {
     for (const id of tokenIds) {
       await db
         .update(tokens)
-        .set({ isHot, updatedAt: new Date().toISOString().toISOString().toISOString() })
+        .set({ isHot, updatedAt: new Date().toISOString() })
         .where(eq(tokens.id, id));
     }
   }

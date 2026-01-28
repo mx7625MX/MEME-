@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
         await db.update(wallets)
           .set({ 
             balance: (walletBalance - collectAmount).toString(),
-            updatedAt: new Date().toISOString().toISOString()
+            updatedAt: new Date().toISOString()
           })
           .where(eq(wallets.id, walletId));
         
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
         await db.update(wallets)
           .set({ 
             balance: (targetBalance + actualAmount).toString(),
-            updatedAt: new Date().toISOString().toISOString()
+            updatedAt: new Date().toISOString()
           })
           .where(eq(wallets.id, targetWalletId));
         

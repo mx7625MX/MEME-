@@ -26,7 +26,7 @@ export async function PATCH(
 
     // 更新持仓
     const updatedData: any = {
-      updatedAt: new Date().toISOString().toISOString()
+      updatedAt: new Date().toISOString()
     };
 
     if (body.profitTarget !== undefined) {
