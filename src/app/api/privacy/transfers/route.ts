@@ -21,17 +21,17 @@ export async function GET(request: NextRequest) {
     }
 
     const conditions = [eq(privacyTransfers.fromWalletId, walletId)];
-    
+
     if (status) {
       conditions.push(eq(privacyTransfers.status, status));
     }
 
     const db = await getDb();
-    const transfers = await db.query.privacyTransfers.findMany({
-      where: and(...conditions),
-      orderBy: [desc(privacyTransfers.createdAt)],
-      limit,
-    });
+    const transfers = await db.select()
+      .from(privacyTransfers)
+      .where(and(...conditions))
+      .orderBy(desc(privacyTransfers.createdAt))
+      .limit(limit);
 
     return NextResponse.json({
       success: true,
