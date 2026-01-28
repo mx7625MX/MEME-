@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Transaction timeout')), 5 * 60 * 1000)
         )
-      ]);
+      ]) as any;
 
       // 更新交易状态
       await logTransaction(
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
         to,
         amount,
         network,
-        (receipt as any).status === 1 ? 'success' : 'failed'
+        receipt.status === 1 ? 'success' : 'failed'
       );
 
       // 返回结果
