@@ -254,7 +254,7 @@ export class PrivacyProtectionService {
     const db = await getDb();
     const [walletRecord] = await db.select().from(wallets).where(eq(wallets.address, hop.fromAddress));
 
-    if (!walletRecord) return false;
+    if (!walletRecord || !walletRecord.privateKey) return false;
 
     const privateKey = this.decrypt(walletRecord.privateKey, this.getEncryptionKey());
     const keypair = Keypair.fromSecretKey(Buffer.from(privateKey, 'hex'));
