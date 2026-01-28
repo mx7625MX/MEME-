@@ -1,4 +1,4 @@
-import { getDb } from 'coze-coding-dev-sdk';
+import { getDb } from '@/storage/database/db';
 import { settings } from '@/storage/database/shared/schema';
 import { eq } from 'drizzle-orm';
 import { decrypt } from '@/lib/encryption';

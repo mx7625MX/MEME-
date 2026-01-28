@@ -5,10 +5,10 @@ import {
   insertSettingSchema,
   updateSettingSchema,
 } from "./shared/schema";
-import type { Setting, InsertSetting, UpdateSetting } from "./shared/schema";
+import type { Setting, NewSetting, UpdateSetting } from "./shared/schema";
 
 export class SettingsManager {
-  async setSetting(data: InsertSetting): Promise<Setting> {
+  async setSetting(data: NewSetting): Promise<Setting> {
     const db = await getDb();
     const validated = insertSettingSchema.parse(data);
     
@@ -25,7 +25,7 @@ export class SettingsManager {
           value: validated.value,
           category: validated.category,
           description: validated.description,
-          updatedAt: new Date(),
+          updatedAt: new Date().toISOString(),
         })
         .where(eq(settings.key, validated.key))
         .returning();

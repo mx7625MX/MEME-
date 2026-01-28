@@ -1,6 +1,9 @@
 import { pgTable, index, varchar, numeric, text, jsonb, timestamp, boolean, unique, integer, foreignKey } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
+// 使用 sql 标签包装 PostgreSQL 函数
+const gen_random_uuid = () => sql`gen_random_uuid()`
+
 
 
 export const aiSentiments = pgTable("ai_sentiments", {
@@ -396,3 +399,317 @@ export const walletLinkage = pgTable("wallet_linkage", {
 			name: "wallet_linkage_wallet_id_fkey"
 		}),
 ]);
+
+// ==================== Type Definitions ====================
+
+// AiSentiment types
+export type AiSentiment = typeof aiSentiments.$inferSelect;
+export type NewAiSentiment = typeof aiSentiments.$inferInsert;
+
+// MarketData types
+export type MarketData = typeof marketData.$inferSelect;
+export type NewMarketData = typeof marketData.$inferInsert;
+
+// Settings types
+export type Setting = typeof settings.$inferSelect;
+export type NewSetting = typeof settings.$inferInsert;
+
+// Wallet types
+export type Wallet = typeof wallets.$inferSelect;
+export type NewWallet = typeof wallets.$inferInsert;
+
+// Transaction types
+export type Transaction = typeof transactions.$inferSelect;
+export type NewTransaction = typeof transactions.$inferInsert;
+
+// Portfolio types
+export type Portfolio = typeof portfolios.$inferSelect;
+export type NewPortfolio = typeof portfolios.$inferInsert;
+
+// PrivacyTransfer types
+export type PrivacyTransfer = typeof privacyTransfers.$inferSelect;
+export type NewPrivacyTransfer = typeof privacyTransfers.$inferInsert;
+
+// MarketMakerStrategy types
+export type MarketMakerStrategy = typeof marketMakerStrategies.$inferSelect;
+export type NewMarketMakerStrategy = typeof marketMakerStrategies.$inferInsert;
+
+// BotDetectionLog types
+export type BotDetectionLog = typeof botDetectionLogs.$inferSelect;
+export type NewBotDetectionLog = typeof botDetectionLogs.$inferInsert;
+
+// AutoTrade types
+export type AutoTrade = typeof autoTrades.$inferSelect;
+export type NewAutoTrade = typeof autoTrades.$inferInsert;
+
+// Token types
+export type Token = typeof tokens.$inferSelect;
+export type NewToken = typeof tokens.$inferInsert;
+
+// MarketMakerStrategyGroup types
+export type MarketMakerStrategyGroup = typeof marketMakerStrategyGroups.$inferSelect;
+export type NewMarketMakerStrategyGroup = typeof marketMakerStrategyGroups.$inferInsert;
+
+// LiquidityPool types
+export type LiquidityPool = typeof liquidityPools.$inferSelect;
+export type NewLiquidityPool = typeof liquidityPools.$inferInsert;
+
+// PrivacyEventLog types
+export type PrivacyEventLog = typeof privacyEventLogs.$inferSelect;
+export type NewPrivacyEventLog = typeof privacyEventLogs.$inferInsert;
+
+// WalletPrivacyScore types
+export type WalletPrivacyScore = typeof walletPrivacyScores.$inferSelect;
+export type NewWalletPrivacyScore = typeof walletPrivacyScores.$inferInsert;
+
+// PrivacyConfig types
+export type PrivacyConfig = typeof privacyConfigs.$inferSelect;
+export type NewPrivacyConfig = typeof privacyConfigs.$inferInsert;
+
+// HopWallet types
+export type HopWallet = typeof hopWallets.$inferSelect;
+export type NewHopWallet = typeof hopWallets.$inferInsert;
+
+// WalletLinkage types
+export type WalletLinkage = typeof walletLinkage.$inferSelect;
+export type NewWalletLinkage = typeof walletLinkage.$inferInsert;
+
+// ==================== Zod Schemas ====================
+
+import { z } from 'zod';
+
+// AiSentiment schemas
+export const insertAiSentimentSchema = z.object({
+  tokenSymbol: z.string().max(32),
+  sentiment: z.string().max(20),
+  score: z.string(),
+  analysis: z.string().optional(),
+  source: z.string().max(64).optional(),
+  metadata: z.any().optional(),
+});
+
+// MarketData schemas
+export const insertMarketDataSchema = z.object({
+  tokenSymbol: z.string().max(32),
+  price: z.string(),
+  change24H: z.string().optional(),
+  volume24H: z.string().optional(),
+  marketCap: z.string().optional(),
+  isHot: z.boolean().default(false),
+  metadata: z.any().optional(),
+});
+
+export const updateMarketDataSchema = insertMarketDataSchema.partial();
+
+// Settings schemas
+export const insertSettingSchema = z.object({
+  key: z.string().max(128),
+  value: z.string(),
+  category: z.string().max(64).optional(),
+  description: z.string().optional(),
+});
+
+export const updateSettingSchema = insertSettingSchema.partial();
+
+// Wallet schemas
+export const insertWalletSchema = z.object({
+  name: z.string().max(128),
+  chain: z.string().max(20),
+  address: z.string().max(256),
+  balance: z.string().default('0'),
+  mnemonic: z.string().optional(),
+  privateKey: z.string().optional(),
+  isActive: z.boolean().default(true),
+  metadata: z.any().optional(),
+});
+
+export const updateWalletSchema = insertWalletSchema.partial();
+
+// Transaction schemas
+export const insertTransactionSchema = z.object({
+  walletId: z.string().max(36),
+  type: z.string().max(20),
+  chain: z.string().max(20),
+  tokenAddress: z.string().max(256).optional(),
+  tokenSymbol: z.string().max(32).optional(),
+  amount: z.string(),
+  price: z.string().optional(),
+  fee: z.string().default('0'),
+  txHash: z.string().max(256).optional(),
+  status: z.string().default('pending'),
+  metadata: z.any().optional(),
+});
+
+export const updateTransactionSchema = insertTransactionSchema.partial();
+
+// Portfolio schemas
+export const insertPortfolioSchema = z.object({
+  walletId: z.string().max(36),
+  chain: z.string().max(20),
+  tokenAddress: z.string().max(256),
+  tokenSymbol: z.string().max(32),
+  tokenName: z.string().max(128).optional(),
+  amount: z.string(),
+  buyPrice: z.string(),
+  buyAmount: z.string(),
+  currentPrice: z.string().optional(),
+  profitTarget: z.string().optional(),
+  stopLoss: z.string().optional(),
+  totalInvested: z.string().default('0'),
+  totalValue: z.string().optional(),
+  profitLoss: z.string().optional(),
+  profitLossPercent: z.string().optional(),
+  status: z.string().default('active'),
+  metadata: z.any().optional(),
+  soldAt: z.string().optional(),
+  autoSellType: z.string().optional(),
+  lastAutoSellAt: z.string().optional(),
+  whaleBuyThreshold: z.string().optional(),
+  autoSellPercentage: z.string().default('100'),
+  autoSellEnabled: z.boolean().default(false),
+  autoSellStatus: z.string().default('idle'),
+  timedSellEnabled: z.boolean().default(false),
+  timedSellExecutedAt: z.string().optional(),
+  timedSellScheduledAt: z.string().optional(),
+  timedSellSeconds: z.number().default(5),
+});
+
+export const updatePortfolioSchema = insertPortfolioSchema.partial();
+
+// Token schemas
+export const insertTokenSchema = z.object({
+  chain: z.string().max(20),
+  address: z.string().max(256),
+  symbol: z.string().max(32),
+  name: z.string().max(128).optional(),
+  decimals: z.number().default(18),
+  totalSupply: z.string().optional(),
+  liquidity: z.string().optional(),
+  marketCap: z.string().optional(),
+  price: z.string().optional(),
+  priceChange24H: z.string().optional(),
+  volume24H: z.string().optional(),
+  isHot: z.boolean().default(false),
+  metadata: z.any().optional(),
+  website: z.string().max(256).optional(),
+  twitter: z.string().max(256).optional(),
+  telegram: z.string().max(256).optional(),
+  discord: z.string().max(256).optional(),
+  description: z.string().optional(),
+});
+
+export const updateTokenSchema = insertTokenSchema.partial();
+
+// LiquidityPool schemas
+export const insertLiquidityPoolSchema = z.object({
+  chain: z.string().max(32),
+  tokenAddress: z.string().max(128),
+  tokenSymbol: z.string().max(32),
+  pairTokenSymbol: z.string().max(32),
+  pairTokenAddress: z.string().max(128),
+  dex: z.string().max(64),
+  poolAddress: z.string().max(128),
+  tokenAmount: z.string(),
+  pairTokenAmount: z.string(),
+  totalLiquidity: z.string(),
+  lpTokenAmount: z.string(),
+  initialPrice: z.string(),
+  status: z.string().default('active'),
+  locked: z.boolean().default(false),
+  lockEndTime: z.string().optional(),
+  metadata: z.any().optional(),
+});
+
+export const updateLiquidityPoolSchema = insertLiquidityPoolSchema.partial();
+
+// MarketMakerStrategy schemas
+export const insertMarketMakerStrategySchema = z.object({
+  name: z.string().max(128),
+  walletId: z.string().max(36),
+  tokenAddress: z.string().max(128),
+  tokenSymbol: z.string().max(32),
+  platform: z.string().max(32),
+  strategyType: z.string().max(32),
+  isEnabled: z.boolean().default(true),
+  status: z.string().default('idle'),
+  params: z.any().default({}),
+  totalBuys: z.number().default(0),
+  totalBuyAmount: z.string().default('0'),
+  totalSpent: z.string().default('0'),
+  maxSpend: z.string().default('100'),
+  stopLossPercent: z.string().default('50'),
+  startAt: z.string().optional(),
+  endAt: z.string().optional(),
+  lastExecutedAt: z.string().optional(),
+  nextExecuteAt: z.string().optional(),
+  metadata: z.any().optional(),
+});
+
+export const updateMarketMakerStrategySchema = insertMarketMakerStrategySchema.partial();
+
+// MarketMakerStrategyGroup schemas
+export const insertMarketMakerStrategyGroupSchema = z.object({
+  groupId: z.string().max(36).optional(),
+  name: z.string().max(128).optional(),
+  strategyId: z.string().max(36).optional(),
+  tokenAddress: z.string().max(128).optional(),
+  tokenSymbol: z.string().max(32).optional(),
+  coordinationType: z.string().max(32).optional(),
+  priority: z.number().default(0),
+  isEnabled: z.boolean().default(true),
+  coordinationRules: z.any().default({}),
+  totalExecuted: z.number().default(0),
+  lastExecutedAt: z.string().optional(),
+  metadata: z.any().optional(),
+});
+
+export const updateMarketMakerStrategyGroupSchema = insertMarketMakerStrategyGroupSchema.partial();
+
+// AutoTrade schemas
+export const insertAutoTradeSchema = z.object({
+  walletId: z.string().max(36),
+  name: z.string().max(128),
+  chain: z.string().max(20),
+  tokenAddress: z.string().max(256).optional(),
+  tokenSymbol: z.string().max(32).optional(),
+  tradeType: z.string().max(20),
+  condition: z.string().max(32),
+  conditionValue: z.string().optional(),
+  amount: z.string(),
+  slippage: z.number().default(5),
+  isEnabled: z.boolean().default(true),
+  executedCount: z.number().default(0),
+  lastExecutedAt: z.string().optional(),
+  metadata: z.any().optional(),
+});
+
+export const updateAutoTradeSchema = insertAutoTradeSchema.partial();
+
+// PrivacyConfig schemas
+export const insertPrivacyConfigSchema = z.object({
+  walletId: z.string().max(36),
+  privacyLevel: z.string().default('MEDIUM'),
+  enableAutoPrivacy: z.boolean().default(false),
+  maxHops: z.number().default(2),
+  splitCount: z.number().default(2),
+  minDelayMs: z.number().default(1000),
+  maxDelayMs: z.number().default(5000),
+  useRandomPath: z.boolean().default(true),
+  avoidKnownTracking: z.boolean().default(true),
+});
+
+export const updatePrivacyConfigSchema = insertPrivacyConfigSchema.partial();
+
+// HopWallet schemas
+export const insertHopWalletSchema = z.object({
+  address: z.string().max(256),
+  privateKey: z.string(),
+  chain: z.string().max(20),
+  isTemporary: z.boolean().default(true),
+  createdAt: z.string().optional(),
+  expiresAt: z.string().optional(),
+  usedCount: z.number().default(0),
+  isActive: z.boolean().default(true),
+});
+
+export const updateHopWalletSchema = insertHopWalletSchema.partial();

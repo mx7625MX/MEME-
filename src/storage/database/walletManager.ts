@@ -1,14 +1,13 @@
 import { eq, and, SQL, desc, sql } from "drizzle-orm";
-import { getDb } from "coze-coding-dev-sdk";
+import { getDb } from "@/storage/database/db";
 import {
   wallets,
   insertWalletSchema,
-  updateWalletSchema,
 } from "./shared/schema";
-import type { Wallet, InsertWallet, UpdateWallet } from "./shared/schema";
+import type { Wallet, NewWallet } from "./shared/schema";
 
 export class WalletManager {
-  async createWallet(data: InsertWallet): Promise<Wallet> {
+  async createWallet(data: NewWallet): Promise<Wallet> {
     const db = await getDb();
     const validated = insertWalletSchema.parse(data);
     const [wallet] = await db.insert(wallets).values(validated).returning();
@@ -59,12 +58,12 @@ export class WalletManager {
     return wallet || null;
   }
 
-  async updateWallet(id: string, data: UpdateWallet): Promise<Wallet | null> {
+  async updateWallet(id: string, data: insertWalletSchema): Promise<Wallet | null> {
     const db = await getDb();
     const validated = updateWalletSchema.parse(data);
     const [wallet] = await db
       .update(wallets)
-      .set({ ...validated, updatedAt: new Date() })
+      .set({ ...validated, updatedAt: new Date().toISOString() })
       .where(eq(wallets.id, id))
       .returning();
     return wallet || null;
@@ -77,7 +76,7 @@ export class WalletManager {
     const db = await getDb();
     const [wallet] = await db
       .update(wallets)
-      .set({ balance, updatedAt: new Date() })
+      .set({ balance, updatedAt: new Date().toISOString() })
       .where(eq(wallets.id, id))
       .returning();
     return wallet || null;

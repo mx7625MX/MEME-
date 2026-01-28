@@ -5,10 +5,10 @@ import {
   insertMarketDataSchema,
   updateMarketDataSchema,
 } from "./shared/schema";
-import type { MarketData, InsertMarketData, UpdateMarketData } from "./shared/schema";
+import type { MarketData, NewMarketData, insertMarketDataSchema } from "./shared/schema";
 
 export class MarketDataManager {
-  async createMarketData(input: InsertMarketData): Promise<MarketData> {
+  async createMarketData(input: NewMarketData): Promise<MarketData> {
     const db = await getDb();
     const validated = insertMarketDataSchema.parse(input);
     const [created] = await db.insert(marketData).values(validated).returning();
@@ -17,7 +17,7 @@ export class MarketDataManager {
 
   async upsertMarketData(
     tokenSymbol: string,
-    data: InsertMarketData
+    data: NewMarketData
   ): Promise<MarketData> {
     const db = await getDb();
     const validated = insertMarketDataSchema.parse({ ...data, tokenSymbol });
@@ -31,7 +31,7 @@ export class MarketDataManager {
     if (existing) {
       const [updated] = await db
         .update(marketData)
-        .set({ ...validated, updatedAt: new Date() })
+        .set({ ...validated, updatedAt: new Date().toISOString() })
         .where(eq(marketData.tokenSymbol, tokenSymbol))
         .returning();
       return updated;
@@ -86,13 +86,13 @@ export class MarketDataManager {
 
   async updateMarketData(
     tokenSymbol: string,
-    data: UpdateMarketData
+    data: insertMarketDataSchema
   ): Promise<MarketData | null> {
     const db = await getDb();
     const validated = updateMarketDataSchema.parse(data);
     const [updated] = await db
       .update(marketData)
-      .set({ ...validated, updatedAt: new Date() })
+      .set({ ...validated, updatedAt: new Date().toISOString() })
       .where(eq(marketData.tokenSymbol, tokenSymbol))
       .returning();
     return updated || null;
@@ -104,7 +104,7 @@ export class MarketDataManager {
       .select()
       .from(marketData)
       .where(eq(marketData.isHot, true))
-      .orderBy(desc(marketData.volume24h))
+      .orderBy(desc(marketData.volume24H))
       .limit(limit);
   }
 
@@ -113,7 +113,7 @@ export class MarketDataManager {
     return db
       .select()
       .from(marketData)
-      .orderBy(desc(marketData.change24h))
+      .orderBy(desc(marketData.change24H))
       .limit(limit);
   }
 
@@ -122,7 +122,7 @@ export class MarketDataManager {
     return db
       .select()
       .from(marketData)
-      .orderBy(marketData.change24h)
+      .orderBy(marketData.change24H)
       .limit(limit);
   }
 }

@@ -1,4 +1,4 @@
-import { getDb } from 'coze-coding-dev-sdk';
+import { getDb } from '@/storage/database/db';
 import { auditLogs } from '@/storage/database/shared/schema';
 
 export interface AuditEvent {

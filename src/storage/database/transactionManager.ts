@@ -1,11 +1,10 @@
 import { eq, and, SQL, desc, sql } from "drizzle-orm";
-import { getDb } from "coze-coding-dev-sdk";
+import { getDb } from "@/storage/database/db";
 import {
   transactions,
   insertTransactionSchema,
-  updateTransactionSchema,
 } from "./shared/schema";
-import type { Transaction, InsertTransaction, UpdateTransaction } from "./shared/schema";
+import type { Transaction, NewTransaction } from "./shared/schema";
 
 export class TransactionManager {
   async createTransaction(data: InsertTransaction): Promise<Transaction> {
@@ -67,13 +66,13 @@ export class TransactionManager {
 
   async updateTransaction(
     id: string,
-    data: UpdateTransaction
+    data: insertTransactionSchema
   ): Promise<Transaction | null> {
     const db = await getDb();
     const validated = updateTransactionSchema.parse(data);
     const [transaction] = await db
       .update(transactions)
-      .set({ ...validated, updatedAt: new Date() })
+      .set({ ...validated, updatedAt: new Date().toISOString() })
       .where(eq(transactions.id, id))
       .returning();
     return transaction || null;
@@ -90,7 +89,7 @@ export class TransactionManager {
       .set({
         status,
         txHash,
-        updatedAt: new Date(),
+        updatedAt: new Date().toISOString(),
       })
       .where(eq(transactions.id, id))
       .returning();

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb, SearchClient, Config } from 'coze-coding-dev-sdk';
+import { getDb } from '@/storage/database/db';
+import { SearchClient, Config } from '@/lib/searchClient';
 import { aiSentiments } from '@/storage/database/shared/schema';
 import { eq } from 'drizzle-orm';
 import { INFLUENCERS } from '@/config/influencers';

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from 'coze-coding-dev-sdk';
+import { getDb } from '@/storage/database/db';
 import { marketMakerStrategies, wallets, transactions, tokens, portfolios, botDetectionLogs } from '@/storage/database/shared/schema';
 import { insertTransactionSchema, insertPortfolioSchema, insertBotDetectionLogSchema } from '@/storage/database/shared/schema';
 import { eq, and, lt, gte } from 'drizzle-orm';

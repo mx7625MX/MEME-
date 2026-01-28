@@ -12,7 +12,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSigner, isValidAddress, NetworkKey } from '@/lib/blockchain';
-import { getDb } from 'coze-coding-dev-sdk';
+import { getDb } from '@/storage/database/db';
 
 // 交易配置
 const MIN_TRANSACTION_AMOUNT = '0.0001'; // 最小交易金额（ETH）

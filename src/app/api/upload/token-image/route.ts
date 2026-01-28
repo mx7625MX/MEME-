@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { S3Storage } from 'coze-coding-dev-sdk';
+import { S3Storage } from '@/storage/s3';
 
 // 支持的图片类型
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -21,9 +21,9 @@ export async function POST(request: NextRequest) {
     // 验证文件类型
     if (!ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: `不支持的文件类型。仅支持: ${ALLOWED_TYPES.join(', ')}` 
+        {
+          success: false,
+          error: `不支持的文件类型。仅支持: ${ALLOWED_TYPES.join(', ')}`
         },
         { status: 400 }
       );
@@ -32,9 +32,9 @@ export async function POST(request: NextRequest) {
     // 验证文件大小
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: `文件过大。最大支持 ${MAX_FILE_SIZE / 1024 / 1024}MB` 
+        {
+          success: false,
+          error: `文件过大。最大支持 ${MAX_FILE_SIZE / 1024 / 1024}MB`
         },
         { status: 400 }
       );
@@ -44,12 +44,34 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
+    // 检查环境变量
+    const endpointUrl = process.env.COZE_BUCKET_ENDPOINT_URL;
+    const bucketName = process.env.COZE_BUCKET_NAME;
+    const accessKey = process.env.AWS_ACCESS_KEY_ID;
+    const secretKey = process.env.AWS_SECRET_ACCESS_KEY;
+
+    if (!endpointUrl || !bucketName || !accessKey || !secretKey) {
+      console.error('Missing S3 environment variables:', {
+        hasEndpoint: !!endpointUrl,
+        hasBucket: !!bucketName,
+        hasAccessKey: !!accessKey,
+        hasSecretKey: !!secretKey,
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'S3 配置不完整，请联系管理员配置存储服务'
+        },
+        { status: 500 }
+      );
+    }
+
     // 初始化 S3Storage
     const storage = new S3Storage({
-      endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL,
-      accessKey: '',
-      secretKey: '',
-      bucketName: process.env.COZE_BUCKET_NAME,
+      endpointUrl,
+      accessKey,
+      secretKey,
+      bucketName,
       region: 'cn-beijing',
     });
 
@@ -81,9 +103,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Token image upload error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : '图片上传失败' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : '图片上传失败'
       },
       { status: 500 }
     );

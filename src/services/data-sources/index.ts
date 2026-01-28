@@ -3,7 +3,7 @@
  * 整合多个数据源，提供统一的热点捕捉接口
  */
 
-import { SearchClient, Config } from 'coze-coding-dev-sdk';
+import { SearchClient, Config } from '@/lib/searchClient';
 
 export interface DataSourceItem {
   id: string;

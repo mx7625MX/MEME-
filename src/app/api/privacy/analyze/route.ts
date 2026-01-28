@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { privacyProtectionService } from '@/services/privacy-protection/privacy-service';
-import { getDb } from 'coze-coding-dev-sdk';
+import { getDb } from '@/storage/database/db';
 import { wallets } from '@/storage/database/shared/schema';
 import { eq } from 'drizzle-orm';
 

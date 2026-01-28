@@ -1,14 +1,14 @@
 import { eq, and, SQL, desc, sql } from "drizzle-orm";
-import { getDb } from "coze-coding-dev-sdk";
+import { getDb } from "@/storage/database/db";
 import {
   tokens,
   insertTokenSchema,
   updateTokenSchema,
 } from "./shared/schema";
-import type { Token, InsertToken, UpdateToken } from "./shared/schema";
+import type { Token, NewToken } from "./shared/schema";
 
 export class TokenManager {
-  async createToken(data: InsertToken): Promise<Token> {
+  async createToken(data: NewToken): Promise<Token> {
     const db = await getDb();
     const validated = insertTokenSchema.parse(data);
     const [token] = await db.insert(tokens).values(validated).returning();
@@ -86,12 +86,12 @@ export class TokenManager {
     return token || null;
   }
 
-  async updateToken(id: string, data: UpdateToken): Promise<Token | null> {
+  async updateToken(id: string, data: insertTokenSchema): Promise<Token | null> {
     const db = await getDb();
     const validated = updateTokenSchema.parse(data);
     const [token] = await db
       .update(tokens)
-      .set({ ...validated, updatedAt: new Date() })
+      .set({ ...validated, updatedAt: new Date().toISOString() })
       .where(eq(tokens.id, id))
       .returning();
     return token || null;
@@ -108,7 +108,7 @@ export class TokenManager {
       .set({
         price,
         priceChange24h,
-        updatedAt: new Date(),
+        updatedAt: new Date().toISOString(),
       })
       .where(eq(tokens.id, id))
       .returning();
@@ -120,7 +120,7 @@ export class TokenManager {
     for (const id of tokenIds) {
       await db
         .update(tokens)
-        .set({ isHot, updatedAt: new Date() })
+        .set({ isHot, updatedAt: new Date().toISOString() })
         .where(eq(tokens.id, id));
     }
   }

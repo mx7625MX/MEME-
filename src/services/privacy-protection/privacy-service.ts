@@ -16,13 +16,13 @@ import {
   TrackingAnalysis,
   WalletPrivacyReport 
 } from './types';
-import { 
-  privacyConfigs, 
-  hopWallets, 
+import {
+  privacyConfigs,
+  hopWallets,
   privacyTransfers,
   wallets
 } from '@/storage/database/shared/schema';
-import { getDb } from 'coze-coding-dev-sdk';
+import { getDb } from '@/storage/database/db';
 import { eq } from 'drizzle-orm';
 
 export class PrivacyProtectionService {

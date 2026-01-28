@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from 'coze-coding-dev-sdk';
+import { getDb } from '@/storage/database/db';
 import { portfolios, wallets } from '@/storage/database/shared/schema';
 import { insertPortfolioSchema } from '@/storage/database/shared/schema';
 import { eq, desc } from 'drizzle-orm';

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from 'coze-coding-dev-sdk';
+import { getDb } from '@/storage/database/db';
 import { transactions, botDetectionLogs } from '@/storage/database/shared/schema';
 import { insertBotDetectionLogSchema } from '@/storage/database/shared/schema';
 import { eq, and, gte, desc } from 'drizzle-orm';
