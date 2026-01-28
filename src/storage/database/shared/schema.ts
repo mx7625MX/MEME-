@@ -728,3 +728,29 @@ export const insertBotDetectionLogSchema = z.object({
 });
 
 export const updateBotDetectionLogSchema = insertBotDetectionLogSchema.partial();
+
+
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+  event: varchar({ length: 128 }).notNull(),
+  details: jsonb(),
+  timestamp: timestamp({ withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+  severity: varchar({ length: 20 }).default('low').notNull(),
+}, (table) => [
+  index("audit_logs_timestamp_idx").using("btree", table.timestamp.asc().nullsLast().op("timestamptz_ops")),
+  index("audit_logs_event_idx").using("btree", table.event.asc().nullsLast().op("text_ops")),
+  index("audit_logs_severity_idx").using("btree", table.severity.asc().nullsLast().op("text_ops")),
+]);
+
+// AuditLog types
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type NewAuditLog = typeof auditLogs.$inferInsert;
+
+// AuditLog schemas
+export const insertAuditLogSchema = z.object({
+  event: z.string().max(128),
+  details: z.any().optional(),
+  severity: z.string().max(20).default('low'),
+});
+
+export const updateAuditLogSchema = insertAuditLogSchema.partial();
