@@ -4084,6 +4084,7 @@ export default function MemeMasterPro() {
                   </div>
                 )}
               </CardContent>
+            </Card>
             <Card className="bg-black/20 border-white/10 backdrop-blur-sm">
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -4174,6 +4175,7 @@ export default function MemeMasterPro() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
           
           {/* 自动交易 */}
           <TabsContent value="autotrade" className="space-y-4">
