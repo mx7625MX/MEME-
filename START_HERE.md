@@ -4,6 +4,13 @@
 
 ### 1️⃣ 必读文档（从这里开始）
 
+#### 🎯 [DEPLOYMENT_ANALYSIS.md](./DEPLOYMENT_ANALYSIS.md) **新增！**
+**部署方式选择指南** - 云端 vs 本地桌面部署全面分析
+- ✅ 详细对比 12 个关键维度
+- ✅ 结论明确：云端部署 95/100，本地部署 35/100
+- ✅ 成本分析：云端每年节省 $1860-2040
+- ✅ 适合所有需要了解部署选项的用户
+
 #### 🚀 [GITHUB_AUTO_DEPLOY_GUIDE.md](./GITHUB_AUTO_DEPLOY_GUIDE.md)
 **推荐首选！** 超详细的 GitHub 自动部署指南
 - ✅ 20 分钟完成部署
@@ -227,7 +234,8 @@ chmod +x check-config.sh
 
 **准备好了吗？**
 
-从 [GITHUB_AUTO_DEPLOY_GUIDE.md](./GITHUB_AUTO_DEPLOY_GUIDE.md) 开始吧！
+**第一步：** 先看 [DEPLOYMENT_ANALYSIS.md](./DEPLOYMENT_ANALYSIS.md) 了解为什么选择云端部署  
+**第二步：** 然后从 [GITHUB_AUTO_DEPLOY_GUIDE.md](./GITHUB_AUTO_DEPLOY_GUIDE.md) 开始部署！
 
 **20 分钟后，你就能拥有自己的 DeFi 交易管理平台！**
 
@@ -237,6 +245,7 @@ chmod +x check-config.sh
 
 | 文档 | 用途 | 优先级 |
 |------|------|--------|
+| [DEPLOYMENT_ANALYSIS.md](./DEPLOYMENT_ANALYSIS.md) | **新增！** 云端 vs 本地部署全面分析 | ⭐⭐⭐⭐⭐ |
 | [GITHUB_AUTO_DEPLOY_GUIDE.md](./GITHUB_AUTO_DEPLOY_GUIDE.md) | GitHub 自动部署详细指南 | ⭐⭐⭐⭐⭐ |
 | [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md) | 快速参考表 | ⭐⭐⭐⭐ |
 | [DEPLOYMENT_FAQ.md](./DEPLOYMENT_FAQ.md) | 常见问题解决 | ⭐⭐⭐⭐ |
