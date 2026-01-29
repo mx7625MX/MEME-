@@ -2,26 +2,28 @@
  * 交易列表 API - 使用缓存优化
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/storage/database/db';
+import { getDb } from '@/storage/database/db';
+import { transactions } from '@/storage/database/shared/schema';
 import { cache } from '@/lib/cache';
 import { generateCacheKey } from '@/lib/cache';
+import { eq, desc } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    const walletId = searchParams.get('walletId');
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    if (!userId) {
+    if (!walletId) {
       return NextResponse.json({
         success: false,
-        error: '缺少用户ID'
+        error: '缺少钱包ID'
       }, { status: 400 });
     }
 
     // 生成缓存键
-    const cacheKey = generateCacheKey('user_transactions', userId, limit, offset);
+    const cacheKey = generateCacheKey('wallet_transactions', walletId, limit, offset);
 
     // 尝试从缓存获取
     const cached = cache.get(cacheKey);
@@ -35,19 +37,20 @@ export async function GET(request: NextRequest) {
     }
 
     // 从数据库查询
-    const transactions = await db.query.transactionsTable.findMany({
-      where: eq(transactionsTable.userId, userId),
-      orderBy: [desc(transactionsTable.createdAt)],
-      limit,
-      offset
-    });
+    const db = await getDb();
+    const txList = await db.select()
+      .from(transactions)
+      .where(eq(transactions.walletId, walletId))
+      .orderBy(desc(transactions.createdAt))
+      .limit(limit)
+      .offset(offset);
 
     // 缓存结果 (30秒)
-    cache.set(cacheKey, transactions, 30000);
+    cache.set(cacheKey, txList, 30000);
 
     return NextResponse.json({
       success: true,
-      data: transactions,
+      data: txList,
       cached: false
     });
   } catch (error) {
@@ -63,23 +66,35 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId, from, to, amount, txType, network = 'ethereum' } = body;
+    const { walletId, type, chain, tokenAddress, tokenSymbol, amount, price, fee = '0', txHash, metadata = {} } = body;
+
+    if (!walletId || !type || !chain || !amount) {
+      return NextResponse.json({
+        success: false,
+        error: '缺少必需参数: walletId, type, chain, amount'
+      }, { status: 400 });
+    }
 
     // 创建交易
-    const result = await db.insert(transactionsTable).values({
-      userId,
-      from,
-      to,
-      amount,
-      txType,
-      network,
+    const db = await getDb();
+    const result = await db.insert(transactions).values({
+      walletId,
+      type,
+      chain,
+      tokenAddress,
+      tokenSymbol,
+      amount: amount.toString(),
+      price: price?.toString(),
+      fee: fee.toString(),
+      txHash,
       status: 'pending',
+      metadata,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }).returning();
 
-    // 清除用户交易缓存
-    const cacheKey = generateCacheKey('user_transactions', userId);
+    // 清除钱包交易缓存
+    const cacheKey = generateCacheKey('wallet_transactions', walletId);
     cache.delete(cacheKey);
 
     return NextResponse.json({
