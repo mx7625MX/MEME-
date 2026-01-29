@@ -7,11 +7,36 @@ import * as crypto from "crypto";
 /**
  * 加密/解密工具类
  * 使用环境变量存储加密密钥，确保钱包安全
+ *
+ * ⚠️ 重要警告：
+ * - 必须在 Vercel Dashboard 中设置 ENCRYPTION_KEY 和 ENCRYPTION_SALT
+ * - 如果未设置，将使用随机密钥（仅用于开发环境）
+ * - 生产环境中，每次函数重启后随机密钥会变化，导致之前加密的数据无法解密
+ * - 这是严重的安全和功能问题，必须设置固定密钥
  */
 
-// 从环境变量获取加密密钥，如果未设置则生成一个随机密钥（仅用于开发）
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
-const ENCRYPTION_SALT = process.env.ENCRYPTION_SALT || crypto.randomBytes(16).toString('hex');
+// 从环境变量获取加密密钥
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
+const ENCRYPTION_SALT = process.env.ENCRYPTION_SALT;
+
+// 检查是否在生产环境且未设置加密密钥
+if (process.env.NODE_ENV === 'production' && (!ENCRYPTION_KEY || !ENCRYPTION_SALT)) {
+  console.error('⚠️ 严重警告: 生产环境未设置 ENCRYPTION_KEY 或 ENCRYPTION_SALT');
+  console.error('⚠️ 这将导致钱包数据无法加密/解密');
+  console.error('⚠️ 请在 Vercel Dashboard 中设置环境变量');
+  console.error('⚠️ Settings → Environment Variables');
+}
+
+// 生成随机密钥（仅用于开发环境）
+let devEncryptionKey: string | null = null;
+let devEncryptionSalt: string | null = null;
+
+if (!ENCRYPTION_KEY || !ENCRYPTION_SALT) {
+  console.warn('⚠️ 警告: 未设置 ENCRYPTION_KEY 或 ENCRYPTION_SALT，使用随机密钥（仅用于开发环境）');
+  devEncryptionKey = crypto.randomBytes(32).toString('hex');
+  devEncryptionSalt = crypto.randomBytes(16).toString('hex');
+  console.warn('⚠️ 生产环境必须设置固定的 ENCRYPTION_KEY 和 ENCRYPTION_SALT');
+}
 
 /**
  * 加密函数 - 使用 AES-256-GCM 算法
@@ -21,7 +46,7 @@ const ENCRYPTION_SALT = process.env.ENCRYPTION_SALT || crypto.randomBytes(16).to
 function encrypt(text: string): string {
   try {
     const algorithm = "aes-256-gcm";
-    const key = crypto.scryptSync(ENCRYPTION_KEY, ENCRYPTION_SALT, 32);
+    const key = crypto.scryptSync(ENCRYPTION_KEY || devEncryptionKey!, ENCRYPTION_SALT || devEncryptionSalt!, 32);
     const iv = crypto.randomBytes(16);
     const cipher = crypto.createCipheriv(algorithm, key, iv);
 
@@ -31,7 +56,7 @@ function encrypt(text: string): string {
     const authTag = cipher.getAuthTag();
 
     // 格式：salt:iv:authTag:encryptedData
-    return `${ENCRYPTION_SALT}:${iv.toString("hex")}:${authTag.toString("hex")}:${encrypted}`;
+    return `${ENCRYPTION_SALT || devEncryptionSalt!}:${iv.toString("hex")}:${authTag.toString("hex")}:${encrypted}`;
   } catch (error) {
     console.error("Encryption failed:", error);
     throw new Error("Failed to encrypt wallet data");
@@ -53,7 +78,7 @@ function decrypt(encryptedText: string): string {
     }
 
     const [salt, ivHex, authTagHex, encryptedData] = parts;
-    const key = crypto.scryptSync(ENCRYPTION_KEY, salt, 32);
+    const key = crypto.scryptSync(ENCRYPTION_KEY || devEncryptionKey!, salt, 32);
     const iv = Buffer.from(ivHex, "hex");
     const authTag = Buffer.from(authTagHex, "hex");
 
