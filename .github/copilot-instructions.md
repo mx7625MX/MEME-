@@ -59,8 +59,10 @@ export default function MyComponent({ title, onSubmit }: MyComponentProps) {
   return <Card>...</Card>;
 }
 
-// ✅ 客户端组件必须显式标记
+// ✅ 客户端组件必须显式标记（'use client' 必须在文件最顶部）
+// 文件: src/components/example.tsx
 'use client';
+
 export default function ClientComponent() {
   // ...
 }
@@ -85,7 +87,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // 处理逻辑
+    // 处理逻辑（假设 processData 函数已定义）
     const result = await processData(body.data);
     
     return NextResponse.json({ success: true, data: result });
@@ -103,9 +105,13 @@ export async function POST(request: NextRequest) {
 
 ```tsx
 // ✅ 推荐：处理区块链交易错误
-import { Connection, PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction, Keypair } from '@solana/web3.js';
 
-async function sendTransaction() {
+async function sendTransaction(
+  wallet: { publicKey?: PublicKey },
+  transaction: Transaction,
+  signer: Keypair
+) {
   try {
     const connection = new Connection(process.env.SOLANA_RPC_URL!);
     
@@ -176,9 +182,10 @@ export function TransactionForm() {
 
 ```tsx
 import { db } from '@/lib/db';
-import { users } from '@/lib/schema';
+import { users, wallets } from '@/lib/schema';
 
 // ✅ 推荐：使用事务处理相关操作
+// 假设 UserData 类型已定义
 async function createUserWithWallet(userData: UserData) {
   return await db.transaction(async (tx) => {
     const [user] = await tx.insert(users).values(userData).returning();
@@ -223,18 +230,32 @@ export const config = {
 import { cn } from '@/lib/utils';
 
 // ✅ 推荐：使用 Tailwind CSS 和 cn 工具
-<div className={cn(
-  "flex items-center gap-4 p-4",
-  "rounded-lg border border-border",
-  "bg-background text-foreground",
-  isActive && "bg-primary text-primary-foreground",
-  className
-)}>
-  {children}
-</div>
+function MyComponent({ 
+  isActive, 
+  className, 
+  children 
+}: { 
+  isActive?: boolean; 
+  className?: string; 
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className={cn(
+      "flex items-center gap-4 p-4",
+      "rounded-lg border border-border",
+      "bg-background text-foreground",
+      isActive && "bg-primary text-primary-foreground",
+      className
+    )}>
+      {children}
+    </div>
+  );
+}
 
 // ❌ 避免：内联样式
 <div style={{ display: 'flex', gap: '16px' }}>
+  {/* 内容 */}
+</div>
 ```
 
 ## 常见错误和修复 / Common Errors and Fixes
@@ -263,7 +284,7 @@ export default async function Page({
 ```tsx
 // ❌ 错误：在客户端组件中导入数据库代码
 'use client';
-import { db } from '@/lib/db'; // 这会导致错误
+import { db } from '@/lib/db'; // 这会导致错误。
 
 // ✅ 正确：通过 API 路由访问
 'use client';
@@ -313,20 +334,20 @@ fetchData().then(data => console.log(data));
 1. **永远不要在客户端代码中暴露私钥或密钥**
 2. **验证所有用户输入**，特别是钱包地址和交易金额
 3. **使用环境变量存储敏感信息**
-4. **实现请求速率限制**防止 API 滥用
+4. **实现请求速率限制**以防止 API 滥用
 5. **在区块链交易前验证余额和权限**
 6. **使用 HTTPS** 进行所有网络通信
-7. **实施 CSRF 保护**在表单提交中
-8. **清理和验证数据库查询**防止 SQL 注入
+7. **在表单提交中实施 CSRF 保护**
+8. **清理和验证数据库查询**以防止 SQL 注入
 
 ## 性能优化 / Performance Optimization
 
 1. **使用 Next.js 的图片优化组件** (`next/image`)
 2. **实现适当的缓存策略** (ISR, SSG, SSR)
-3. **懒加载组件**使用动态导入
+3. **使用动态导入懒加载组件**
 4. **优化区块链 RPC 调用**，使用批处理和缓存
-5. **使用 React.memo** 避免不必要的重新渲染
-6. **实现虚拟滚动**处理大列表
+5. **使用 React.memo** 以避免不必要的重新渲染
+6. **实现虚拟滚动**以处理大列表
 
 ## 测试 / Testing
 
