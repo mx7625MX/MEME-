@@ -76,6 +76,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, chain } = body;
 
+    // 允许的链类型
+    const supportedChains = ["eth", "bsc", "solana", "ethereum"];
+
     // 验证必需参数
     if (!name || typeof name !== 'string') {
       return NextResponse.json(
@@ -97,10 +100,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('Creating wallet:', { name, chain });
+    // 验证链类型是否支持
+    if (!supportedChains.includes(chain.toLowerCase())) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Unsupported chain: ${chain}. Supported chains: ${supportedChains.join(", ")}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // 统一链类型（ethereum -> eth）
+    const normalizedChain = chain.toLowerCase() === "ethereum" ? "eth" : chain.toLowerCase() as "eth" | "bsc" | "solana";
+
+    console.log('Creating wallet:', { name, chain: normalizedChain });
 
     // Generate wallet
-    const walletInfo = createWallet(chain);
+    const walletInfo = createWallet(normalizedChain);
     console.log('Wallet generated:', { address: walletInfo.address });
 
     // Encrypt sensitive data
@@ -113,7 +130,7 @@ export async function POST(request: NextRequest) {
     const db = await getDb();
     const [wallet] = await db.insert(wallets).values({
       name,
-      chain,
+      chain: normalizedChain,
       address: walletInfo.address,
       balance: "0",
       mnemonic: encryptedMnemonic,
