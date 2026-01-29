@@ -2,13 +2,36 @@
   "buildCommand": "pnpm install && npx next build",
   "outputDirectory": ".next",
   "framework": "nextjs",
-  "regions": ["hkg1", "sin1"],
+  "regions": ["hkg1"],
   "functions": {
     "app/api/**": {
-      "maxDuration": 60
+      "maxDuration": 30,
+      "memory": 1024
+    },
+    "app/api/market/**": {
+      "maxDuration": 15,
+      "memory": 512
+    },
+    "app/api/wallets/**": {
+      "maxDuration": 15,
+      "memory": 512
     }
   },
-  "env": {
-    "NODE_ENV": "production"
-  }
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, s-maxage=60, stale-while-revalidate=300"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/health",
+      "destination": "/api/health"
+    }
+  ]
 }

@@ -3,16 +3,18 @@ import postgres from 'postgres';
 import * as schema from './shared/schema';
 
 let db: ReturnType<typeof drizzle> | null = null;
+let client: ReturnType<typeof postgres> | null = null;
 
 /**
  * 获取数据库连接实例
+ * 使用连接池优化性能
  * 支持多种环境变量名称（按优先级）：
  * 1. PGDATABASE_URL - 自定义配置
  * 2. POSTGRES_URL - Vercel Postgres 默认
  * 3. DATABASE_URL - 通用配置
  */
 export async function getDb() {
-  if (db) {
+  if (db && client) {
     return db;
   }
 
@@ -33,11 +35,17 @@ export async function getDb() {
   }
 
   try {
-    // 创建 PostgreSQL 连接
-    const client = postgres(databaseUrl, {
-      max: 1,
+    // 创建优化的 PostgreSQL 连接池
+    client = postgres(databaseUrl, {
+      max: 10, // 增加最大连接数
       idle_timeout: 20,
       connect_timeout: 10,
+      // 优化连接复用
+      transform: postgres.camel,
+      // 启用准备语句缓存
+      prepare: true,
+      // 连接生命周期设置
+      max_lifetime: 60 * 30, // 30 分钟
     });
 
     // 创建 Drizzle 实例
@@ -50,5 +58,16 @@ export async function getDb() {
       `无法连接到数据库: ${error instanceof Error ? error.message : '未知错误'}\n` +
       '请检查数据库连接字符串是否正确配置。'
     );
+  }
+}
+
+/**
+ * 关闭数据库连接（可选，用于清理）
+ */
+export async function closeDb() {
+  if (client) {
+    await client.end();
+    db = null;
+    client = null;
   }
 }

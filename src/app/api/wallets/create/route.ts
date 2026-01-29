@@ -124,6 +124,15 @@ export async function POST(request: NextRequest) {
 
     console.log('Wallet saved to database:', wallet.id);
 
+    // 清除钱包列表缓存
+    try {
+      const { cache } = await import('@/lib/cache');
+      cache.delete('wallets_list');
+      console.log('Wallet cache cleared');
+    } catch (err) {
+      console.warn('Failed to clear cache:', err);
+    }
+
     return NextResponse.json({
       success: true,
       data: {

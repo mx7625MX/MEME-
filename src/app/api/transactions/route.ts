@@ -1,61 +1,97 @@
-import { NextRequest, NextResponse } from "next/server";
-import { transactionManager, walletManager } from "@/storage/database";
+/**
+ * 交易列表 API - 使用缓存优化
+ */
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/storage/database/db';
+import { cache } from '@/lib/cache';
+import { generateCacheKey } from '@/lib/cache';
 
-// GET /api/transactions - 获取交易历史
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const walletId = searchParams.get("walletId") || undefined;
-    const chain = searchParams.get("chain") || undefined;
-    const type = searchParams.get("type") || undefined;
-    const status = searchParams.get("status") || undefined;
-    const limit = parseInt(searchParams.get("limit") || "100");
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const offset = parseInt(searchParams.get('offset') || '0');
 
-    const transactions = await transactionManager.getTransactions({
-      filters: {
-        walletId,
-        chain,
-        type,
-        status,
-      } as any,
+    if (!userId) {
+      return NextResponse.json({
+        success: false,
+        error: '缺少用户ID'
+      }, { status: 400 });
+    }
+
+    // 生成缓存键
+    const cacheKey = generateCacheKey('user_transactions', userId, limit, offset);
+
+    // 尝试从缓存获取
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      console.log('缓存命中:', cacheKey);
+      return NextResponse.json({
+        success: true,
+        data: cached,
+        cached: true
+      });
+    }
+
+    // 从数据库查询
+    const transactions = await db.query.transactionsTable.findMany({
+      where: eq(transactionsTable.userId, userId),
+      orderBy: [desc(transactionsTable.createdAt)],
       limit,
+      offset
     });
+
+    // 缓存结果 (30秒)
+    cache.set(cacheKey, transactions, 30000);
 
     return NextResponse.json({
       success: true,
       data: transactions,
+      cached: false
     });
-  } catch (error: any) {
-    console.error("Error fetching transactions:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to fetch transactions",
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    console.error('获取交易列表失败:', error);
+    return NextResponse.json({
+      success: false,
+      error: '获取交易列表失败',
+      details: error instanceof Error ? error.message : '未知错误'
+    }, { status: 500 });
   }
 }
 
-// POST /api/transactions - 创建新交易
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const { userId, from, to, amount, txType, network = 'ethereum' } = body;
 
-    const transaction = await transactionManager.createTransaction(body);
+    // 创建交易
+    const result = await db.insert(transactionsTable).values({
+      userId,
+      from,
+      to,
+      amount,
+      txType,
+      network,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }).returning();
+
+    // 清除用户交易缓存
+    const cacheKey = generateCacheKey('user_transactions', userId);
+    cache.delete(cacheKey);
 
     return NextResponse.json({
       success: true,
-      data: transaction,
+      data: result[0]
     });
-  } catch (error: any) {
-    console.error("Error creating transaction:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to create transaction",
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    console.error('创建交易失败:', error);
+    return NextResponse.json({
+      success: false,
+      error: '创建交易失败',
+      details: error instanceof Error ? error.message : '未知错误'
+    }, { status: 500 });
   }
 }
