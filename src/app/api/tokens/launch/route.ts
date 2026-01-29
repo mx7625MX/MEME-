@@ -466,11 +466,20 @@ export async function POST(request: NextRequest) {
         
         // 根据延迟时间执行
         if (delaySeconds > 0) {
-          // 延迟执行
-          setTimeout(async () => {
-            flashSellTransaction = await executeFlashSell();
-            console.log(`Delayed flash sell executed after ${delaySeconds}s for token ${tokenSymbol}`);
-          }, delaySeconds * 1000);
+          // ⚠️ Vercel Serverless 环境限制
+          // setTimeout 在 Serverless 函数中不可靠，函数会在响应返回后立即结束
+          // 建议使用以下替代方案：
+          // 1. Vercel Cron Jobs (定时任务)
+          // 2. 消息队列 (AWS SQS, Redis Streams)
+          // 3. 专门的定时任务服务 (如 Temporal, BullMQ)
+          console.warn(`⚠️ 延迟闪电卖出功能在 Vercel Serverless 环境中不可靠！`);
+          console.warn(`⚠️ 请求延迟 ${delaySeconds} 秒，但可能无法正常执行。`);
+          console.warn(`⚠️ 建议使用 Cron Jobs 或消息队列实现延迟任务。`);
+
+          // 在 Vercel 环境中，改为立即执行
+          // 如需延迟功能，请使用专门的定时任务服务
+          flashSellTransaction = await executeFlashSell();
+          console.log(`Flash sell executed immediately (Vercel Serverless limitation) for token ${tokenSymbol}`);
         } else {
           // 立即执行
           flashSellTransaction = await executeFlashSell();
