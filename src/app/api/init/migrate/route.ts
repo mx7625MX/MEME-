@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     const db = drizzle(client);
 
     // 创建扩展
-    await client.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"`);
+    await client.unsafe(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"`);
 
     // 创建所有表
     const tables = [
@@ -331,12 +331,12 @@ export async function POST(request: NextRequest) {
 
     // 执行创建表
     for (const tableSQL of tables) {
-      await client.query(tableSQL);
+      await client.unsafe(tableSQL);
     }
 
     // 执行创建索引
     for (const indexSQL of indexes) {
-      await client.query(indexSQL);
+      await client.unsafe(indexSQL);
     }
 
     await client.end();
