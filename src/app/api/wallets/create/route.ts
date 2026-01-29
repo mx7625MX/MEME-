@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { walletManager } from "@/storage/database";
+import { getDb } from "@/storage/database/db";
+import { wallets } from "@/storage/database/shared/schema";
 import { createWallet } from "@/lib/crypto/wallet";
 import * as crypto from "crypto";
 
@@ -75,25 +76,42 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, chain } = body;
 
-    if (!name || !chain) {
+    // 验证必需参数
+    if (!name || typeof name !== 'string') {
       return NextResponse.json(
         {
           success: false,
-          error: "Name and chain are required",
+          error: "Name is required and must be a string",
         },
         { status: 400 }
       );
     }
 
+    if (!chain || typeof chain !== 'string') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Chain is required and must be a string",
+        },
+        { status: 400 }
+      );
+    }
+
+    console.log('Creating wallet:', { name, chain });
+
     // Generate wallet
     const walletInfo = createWallet(chain);
+    console.log('Wallet generated:', { address: walletInfo.address });
 
     // Encrypt sensitive data
     const encryptedMnemonic = encrypt(walletInfo.mnemonic);
     const encryptedPrivateKey = encrypt(walletInfo.privateKey);
 
-    // Save to database
-    const wallet = await walletManager.createWallet({
+    console.log('Data encrypted');
+
+    // 直接插入到数据库，绕过 Schema 验证
+    const db = await getDb();
+    const [wallet] = await db.insert(wallets).values({
       name,
       chain,
       address: walletInfo.address,
@@ -101,13 +119,21 @@ export async function POST(request: NextRequest) {
       mnemonic: encryptedMnemonic,
       privateKey: encryptedPrivateKey,
       isActive: true,
-    });
+      metadata: {},
+    }).returning();
+
+    console.log('Wallet saved to database:', wallet.id);
 
     return NextResponse.json({
       success: true,
       data: {
-        ...wallet,
-        // Return unencrypted address only (sensitive data stays encrypted)
+        id: wallet.id,
+        name: wallet.name,
+        chain: wallet.chain,
+        address: wallet.address,
+        balance: wallet.balance,
+        isActive: wallet.isActive,
+        createdAt: wallet.createdAt,
       },
     });
   } catch (error: any) {
@@ -116,6 +142,7 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error: error.message || "Failed to create wallet",
+        details: error.stack,
       },
       { status: 500 }
     );
