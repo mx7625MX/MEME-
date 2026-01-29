@@ -8,6 +8,10 @@
       "maxDuration": 30,
       "memory": 1024
     },
+    "app/api/init/**": {
+      "maxDuration": 120,
+      "memory": 1024
+    },
     "app/api/market/**": {
       "maxDuration": 15,
       "memory": 512
